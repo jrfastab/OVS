@@ -65,8 +65,9 @@ static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(5, 20);
  */
 
 #define MTU_TO_MAX_LEN(mtu)  ((mtu) + ETHER_HDR_LEN + ETHER_CRC_LEN)
-#define MBUF_SIZE(mtu)       (MTU_TO_MAX_LEN(mtu) + (512) + \
+#define MBUF_SIZE(mtu)       (MTU_TO_MAX_LEN(mtu) + (512) + (512) + \
                              sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+
 
 /* Max and min number of packets in the mempool.  OVS tries to allocate a
  * mempool with MAX_NB_MBUF: if this fails (because the system doesn't have
@@ -110,15 +111,14 @@ static const struct rte_eth_conf port_conf = {
         .split_hdr_size = 0,
         .header_split   = 0, /* Header Split disabled */
         .hw_ip_checksum = 0, /* IP checksum offload disabled */
-        .hw_vlan_filter = 0, /* VLAN filtering disabled */
+        .hw_vlan_filter = 1, /* VLAN filtering disabled */
         .jumbo_frame    = 0, /* Jumbo Frame Support disabled */
         .hw_strip_crc   = 0,
     },
     .rx_adv_conf = {
         .rss_conf = {
             .rss_key = NULL,
-            .rss_hf = ETH_RSS_IPV4_TCP | ETH_RSS_IPV4 | ETH_RSS_IPV6
-                    | ETH_RSS_IPV4_UDP | ETH_RSS_IPV6_TCP | ETH_RSS_IPV6_UDP,
+            .rss_hf = ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP,
         },
     },
     .txmode = {
@@ -432,7 +432,7 @@ dpdk_eth_dev_init(struct netdev_dpdk *dev) OVS_REQUIRES(dpdk_mutex)
 {
     struct rte_pktmbuf_pool_private *mbp_priv;
     struct ether_addr eth_addr;
-    int diag;
+    int diag,ret;
     int i;
 
     if (dev->port_id < 0 || dev->port_id >= rte_eth_dev_count()) {
@@ -472,6 +472,13 @@ dpdk_eth_dev_init(struct netdev_dpdk *dev) OVS_REQUIRES(dpdk_mutex)
     }
 
     rte_eth_promiscuous_enable(dev->port_id);
+    
+
+    ret = rte_eth_dev_vlan_filter(dev->port_id, 1, 1);
+    if (ret < 0)
+    	rte_exit(EXIT_FAILURE, "rte_eth_dev_vlan_filter: err=%d, port=%d\n",
+    		 ret, dev->port_id);
+
     rte_eth_allmulticast_enable(dev->port_id);
 
     memset(&eth_addr, 0x0, sizeof(eth_addr));

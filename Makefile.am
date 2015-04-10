@@ -28,7 +28,7 @@ AM_CPPFLAGS += -I $(top_builddir)/lib
 
 AM_CPPFLAGS += $(SSL_INCLUDES)
 
-AM_CFLAGS = -Wstrict-prototypes
+AM_CFLAGS = -Wstrict-prototypes -mssse3
 AM_CFLAGS += $(WARNING_FLAGS)
 AM_CFLAGS += $(OVS_CFLAGS)
 
