@@ -810,7 +810,7 @@ netdev_dummy_rxq_dealloc(struct netdev_rxq *rxq_)
 
 static int
 netdev_dummy_rxq_recv(struct netdev_rxq *rxq_, struct dp_packet **arr,
-                      int *c)
+                      int *c, odp_port_t *port)
 {
     struct netdev_rxq_dummy *rx = netdev_rxq_dummy_cast(rxq_);
     struct netdev_dummy *netdev = netdev_dummy_cast(rx->up.netdev);
@@ -1058,6 +1058,7 @@ static const struct netdev_class dummy_class = {
     netdev_dummy_dealloc,
     netdev_dummy_get_config,
     netdev_dummy_set_config,
+    NULL,                       /* set_port_no */
     NULL,                       /* get_tunnel_config */
     NULL,                       /* build header */
     NULL,                       /* push header */

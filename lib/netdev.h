@@ -143,6 +143,7 @@ bool netdev_is_reserved_name(const char *name);
 int netdev_n_txq(const struct netdev *netdev);
 int netdev_n_rxq(const struct netdev *netdev);
 bool netdev_is_pmd(const struct netdev *netdev);
+bool netdev_is_vf(const struct netdev *netdev);
 
 /* Open and close. */
 int netdev_open(const char *name, const char *type, struct netdev **netdevp);
@@ -156,6 +157,7 @@ void netdev_parse_name(const char *netdev_name, char **name, char **type);
 /* Options. */
 int netdev_set_config(struct netdev *, const struct smap *args, char **errp);
 int netdev_get_config(const struct netdev *, struct smap *);
+int netdev_set_port_no(struct netdev *, odp_port_t port_no);
 const struct netdev_tunnel_config *
     netdev_get_tunnel_config(const struct netdev *);
 int netdev_get_numa_id(const struct netdev *);
@@ -176,7 +178,7 @@ void netdev_rxq_close(struct netdev_rxq *);
 const char *netdev_rxq_get_name(const struct netdev_rxq *);
 
 int netdev_rxq_recv(struct netdev_rxq *rx, struct dp_packet **buffers,
-                    int *cnt);
+                    int *cnt, odp_port_t *port);
 void netdev_rxq_wait(struct netdev_rxq *);
 int netdev_rxq_drain(struct netdev_rxq *);
 

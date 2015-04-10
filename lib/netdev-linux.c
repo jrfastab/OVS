@@ -74,6 +74,11 @@
 #include "unaligned.h"
 #include "openvswitch/vlog.h"
 
+#include "if_flow.h"
+//#include "/home/csig_sdnd-flow_tool/models/ies_pipeline.h"
+#include "fm_sdk.h"
+#include "flowlib_fi.h"
+
 VLOG_DEFINE_THIS_MODULE(netdev_linux);
 
 COVERAGE_DEFINE(netdev_set_policing);
@@ -986,6 +991,8 @@ netdev_linux_rxq_recv_sock(int fd, struct dp_packet *buffer)
 
     dp_packet_set_size(buffer, dp_packet_size(buffer) + retval);
 
+    VLOG_WARN("received a packet!\n");
+
     for (cmsg = CMSG_FIRSTHDR(&msgh); cmsg; cmsg = CMSG_NXTHDR(&msgh, cmsg)) {
         const struct tpacket_auxdata *aux;
 
@@ -1032,7 +1039,7 @@ netdev_linux_rxq_recv_tap(int fd, struct dp_packet *buffer)
 
 static int
 netdev_linux_rxq_recv(struct netdev_rxq *rxq_, struct dp_packet **packets,
-                      int *c)
+                      int *c, odp_port_t *port)
 {
     struct netdev_rxq_linux *rx = netdev_rxq_linux_cast(rxq_);
     struct netdev *netdev = rx->up.netdev;
@@ -1213,6 +1220,23 @@ netdev_linux_send_wait(struct netdev *netdev, int qid OVS_UNUSED)
     }
 }
 
+/* duplicated in dpif-netdev.c*/
+static uint32_t
+netdev_vf_hw_pid_lookup(void)
+{
+    FILE *fd = fopen(FLOWLIB_PID_FILE, "r");	
+    uint32_t pid;
+
+    if (fd < 0) {
+        VLOG_WARN("no hardware support 'daemon is not listening'");
+        return 0;
+    }
+
+    fscanf(fd, "%" SCNu32 "", &pid);
+    VLOG_WARN("Found pid %lu\n", pid);
+    return pid;
+}
+
 /* Attempts to set 'netdev''s MAC address to 'mac'.  Returns 0 if successful,
  * otherwise a positive errno value. */
 static int
@@ -1222,6 +1246,29 @@ netdev_linux_set_etheraddr(struct netdev *netdev_,
     struct netdev_linux *netdev = netdev_linux_cast(netdev_);
     enum netdev_flags old_flags = 0;
     int error;
+    uint8_t *macp;
+
+#if 0
+    struct net_flow_field_ref m0 = { .instance = HEADER_INSTANCE_ETHERNET,
+			       .header = HEADER_ETHERNET,
+			       .field = HEADER_ETHERNET_DST_MAC,
+			       .mask_type = NET_FLOW_MASK_TYPE_MASK,
+			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U64,
+			       .v.u64.value_u64 = 0,
+			       .v.u64.mask_u64 = 0xffffffffffffffff};
+    struct net_flow_field_ref m[] = {m0, 0};
+    struct net_flow_action a0 = { .name = "set_egress_port", .uid = ACTION_SET_EGRESS_PORT, .args = NULL };
+    struct net_flow_action a[] = {a0, 0};
+    struct net_flow_flow mac_rule = {
+		  .table_id = 5, /* hard coded mac table */
+		  .uid = 1,
+		  .priority = 10,
+		  .hw_flowid = 0,
+		  .matches = m,
+		  .actions = a};
+    struct net_flow_action_arg arg = {.name = "egress_port", .type = NET_FLOW_ACTION_ARG_TYPE_U32, .v.value_u32 = 22};
+    struct net_flow_action_arg as[] = {arg, 0};
+#endif
 
     ovs_mutex_lock(&netdev->mutex);
 
@@ -1243,6 +1290,7 @@ netdev_linux_set_etheraddr(struct netdev *netdev_,
         netdev->cache_valid |= VALID_ETHERADDR;
         if (!error) {
             memcpy(netdev->etheraddr, mac, ETH_ADDR_LEN);
+
         }
     }
 
@@ -1250,6 +1298,27 @@ netdev_linux_set_etheraddr(struct netdev *netdev_,
         update_flags(netdev, 0, NETDEV_UP, &old_flags);
     }
 
+    /* setup hardware configuration channel */
+#if 0
+    mac_rule.actions[0].args = as;
+
+    macp = &m[0].v.u64.value_u64;
+    macp[0] = mac[5];
+    macp[1] = mac[4];
+    macp[2] = mac[3];
+    macp[3] = mac[2];
+    macp[4] = mac[1];
+    macp[5] = mac[0];
+
+    m[0].v.u64.mask_u64 = 0xffffffff;
+    error = flow_fi_set_flows(flow_fi_get_socket(), netdev_vf_hw_pid_lookup(), 0,
+			    555, &mac_rule);
+
+    if (error)
+	VLOG_WARN("failed set flow mac addr\n");
+    else
+	VLOG_WARN("set mac addr\n");
+#endif
 exit:
     ovs_mutex_unlock(&netdev->mutex);
     return error;
@@ -2758,6 +2827,7 @@ netdev_linux_update_flags(struct netdev *netdev_, enum netdev_flags off,
     netdev_linux_dealloc,                                       \
     NULL,                       /* get_config */                \
     NULL,                       /* set_config */                \
+    NULL,                       /* set_port_no */               \
     NULL,                       /* get_tunnel_config */         \
     NULL,                       /* build header */              \
     NULL,                       /* push header */               \

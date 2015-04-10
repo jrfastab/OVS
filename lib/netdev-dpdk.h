@@ -4,6 +4,7 @@
 #include <config.h>
 
 struct dp_packet;
+struct netdev;
 
 /* Reserves cpu core 0 for all non-pmd threads.  Changing the value of this
  * macro will allow pmd thread to be pinned on cpu core 0.  This may not be
@@ -30,7 +31,7 @@ void netdev_dpdk_register(void);
 void free_dpdk_buf(struct dp_packet *);
 int pmd_thread_setaffinity_cpu(int cpu);
 void thread_set_nonpmd(void);
-
+int netdev_dpdk_eth_send(struct netdev *netdev, int qid, struct dp_packet **pkts, int cnt, bool may_steal);
 #else
 
 #include "util.h"

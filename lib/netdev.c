@@ -32,6 +32,7 @@
 #include "hash.h"
 #include "list.h"
 #include "netdev-dpdk.h"
+#include "netdev-vf.h"
 #include "netdev-provider.h"
 #include "netdev-vport.h"
 #include "openflow/openflow.h"
@@ -113,6 +114,12 @@ netdev_is_pmd(const struct netdev *netdev)
             !strcmp(netdev->netdev_class->type, "dpdkvhost"));
 }
 
+bool
+netdev_is_vf(const struct netdev *netdev)
+{
+	return  (!strcmp(netdev->netdev_class->type, "vf"));
+}
+
 static void
 netdev_class_mutex_initialize(void)
     OVS_EXCLUDED(netdev_class_mutex, netdev_mutex)
@@ -153,6 +160,7 @@ netdev_initialize(void)
         netdev_vport_tunnel_register();
 #endif
         netdev_dpdk_register();
+	netdev_vf_register();
 
         ovsthread_once_done(&once);
     }
@@ -203,8 +211,10 @@ netdev_lookup_class(const char *type)
 {
     struct netdev_registered_class *rc;
 
+    VLOG_WARN("on the search for %s...", type);
     HMAP_FOR_EACH_WITH_HASH (rc, hmap_node, hash_string(type, 0),
                              &netdev_classes) {
+        VLOG_WARN("on the search for %s netdev found type %s", type, rc->class->type);
         if (!strcmp(type, rc->class->type)) {
             return rc;
         }
@@ -236,6 +246,7 @@ netdev_register_provider(const struct netdev_class *new_class)
                         hash_string(new_class->type, 0));
             rc->class = new_class;
             rc->ref_cnt = 0;
+            VLOG_WARN("registered, %s", new_class->type);
         } else {
             VLOG_ERR("failed to initialize %s network device class: %s",
                      new_class->type, ovs_strerror(error));
@@ -450,6 +461,15 @@ netdev_set_config(struct netdev *netdev, const struct smap *args, char **errp)
     return 0;
 }
 
+int
+netdev_set_port_no(struct netdev *netdev, odp_port_t port_no)
+{
+    if (netdev->netdev_class->set_port_no) {
+        netdev->netdev_class->set_port_no(netdev, port_no);
+    }
+    return 0;
+}
+
 /* Returns the current configuration for 'netdev' in 'args'.  The caller must
  * have already initialized 'args' with smap_init().  Returns 0 on success, in
  * which case 'args' will be filled with 'netdev''s configuration.  On failure
@@ -643,11 +663,11 @@ netdev_rxq_close(struct netdev_rxq *rx)
  * This function may be set to null if it would always return EOPNOTSUPP
  * anyhow. */
 int
-netdev_rxq_recv(struct netdev_rxq *rx, struct dp_packet **buffers, int *cnt)
+netdev_rxq_recv(struct netdev_rxq *rx, struct dp_packet **buffers, int *cnt, odp_port_t *port)
 {
     int retval;
 
-    retval = rx->netdev->netdev_class->rxq_recv(rx, buffers, cnt);
+    retval = rx->netdev->netdev_class->rxq_recv(rx, buffers, cnt, port);
     if (!retval) {
         COVERAGE_INC(netdev_received);
     }

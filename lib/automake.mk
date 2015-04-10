@@ -123,6 +123,8 @@ lib_libopenvswitch_la_SOURCES = \
 	lib/netdev-provider.h \
 	lib/netdev-vport.c \
 	lib/netdev-vport.h \
+	lib/netdev-vf.c \
+	lib/netdev-vf.h \
 	lib/netdev.c \
 	lib/netdev.h \
 	lib/netflow.h \

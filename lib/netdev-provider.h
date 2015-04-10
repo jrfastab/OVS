@@ -248,6 +248,12 @@ struct netdev_class {
      * pointer. */
     int (*set_config)(struct netdev *netdev, const struct smap *args);
 
+    /* Changes the device 'netdev''s port no.
+     * 
+     * Useful when multiple ports are sharing a receive thread.
+     */
+    int (*set_port_no)(struct netdev *netdev, const odp_port_t port_no);
+
     /* Returns the tunnel configuration of 'netdev'.  If 'netdev' is
      * not a tunnel, returns null.
      *
@@ -712,7 +718,7 @@ struct netdev_class {
      * This function may be set to null if it would always return EOPNOTSUPP
      * anyhow. */
     int (*rxq_recv)(struct netdev_rxq *rx, struct dp_packet **pkts,
-                    int *cnt);
+                    int *cnt, odp_port_t *port);
 
     /* Registers with the poll loop to wake up from the next call to
      * poll_block() when a packet is ready to be received with netdev_rxq_recv()

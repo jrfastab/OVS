@@ -34,6 +34,8 @@
 #include "unaligned.h"
 #include "util.h"
 
+#include "openvswitch/vlog.h"
+
 /* Masked copy of an ethernet address. 'src' is already properly masked. */
 static void
 ether_addr_copy_masked(uint8_t *dst, const uint8_t *src,
@@ -466,6 +468,8 @@ odp_execute_sample(void *dp, struct dp_packet *packet, bool steal,
                         nl_attr_get_size(subactions), dp_execute_action);
 }
 
+VLOG_DEFINE_THIS_MODULE(odp_execute);
+
 void
 odp_execute_actions(void *dp, struct dp_packet **packets, int cnt, bool steal,
                     const struct nlattr *actions, size_t actions_len,
@@ -486,6 +490,20 @@ odp_execute_actions(void *dp, struct dp_packet **packets, int cnt, bool steal,
         case OVS_ACTION_ATTR_TUNNEL_POP:
         case OVS_ACTION_ATTR_USERSPACE:
         case OVS_ACTION_ATTR_RECIRC:
+	    switch (type) {
+        	case OVS_ACTION_ATTR_OUTPUT:
+			break;
+        	case OVS_ACTION_ATTR_TUNNEL_PUSH:
+			break;
+        	case OVS_ACTION_ATTR_TUNNEL_POP:
+			break;
+        	case OVS_ACTION_ATTR_USERSPACE:
+			break;
+        	case OVS_ACTION_ATTR_RECIRC:
+			break;
+		default:
+			break;
+	    }
             if (dp_execute_action) {
                 /* Allow 'dp_execute_action' to steal the packet data if we do
                  * not need it any more. */

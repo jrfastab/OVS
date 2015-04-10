@@ -621,7 +621,7 @@ netdev_rxq_bsd_recv_tap(struct netdev_rxq_bsd *rxq, struct dp_packet *buffer)
 
 static int
 netdev_bsd_rxq_recv(struct netdev_rxq *rxq_, struct dp_packet **packets,
-                    int *c)
+                    int *c, opd_port_t *port)
 {
     struct netdev_rxq_bsd *rxq = netdev_rxq_bsd_cast(rxq_);
     struct netdev *netdev = rxq->up.netdev;

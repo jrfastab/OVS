@@ -31,7 +31,6 @@
 #include "dp-packet.h"
 #include "dpif-netdev.h"
 #include "list.h"
-#include "netdev-dpdk.h"
 #include "netdev-provider.h"
 #include "netdev-vport.h"
 #include "odp-util.h"
@@ -50,6 +49,9 @@
 #include "rte_config.h"
 #include "rte_mbuf.h"
 #include "rte_virtio_net.h"
+
+#include "netdev-dpdk.h"
+#include "netdev-vf.h"
 
 VLOG_DEFINE_THIS_MODULE(dpdk);
 static struct vlog_rate_limit rl = VLOG_RATE_LIMIT_INIT(5, 20);
@@ -101,6 +103,8 @@ BUILD_ASSERT_DECL((MAX_NB_MBUF / ROUND_DOWN_POW2(MAX_NB_MBUF/MIN_NB_MBUF))
 #define TX_WTHRESH 0  /* Default values of TX write-back threshold reg. */
 
 #define MAX_PKT_BURST 32           /* Max burst size for RX/TX */
+
+#define DPDK_NETWORK_GLORT 5
 
 /* Character device cuse_dev_name. */
 char *cuse_dev_name = NULL;
@@ -234,6 +238,9 @@ struct netdev_dpdk {
     /* In dpdk_list. */
     struct ovs_list list_node OVS_GUARDED_BY(dpdk_mutex);
     rte_spinlock_t txq_lock;
+
+    /* network glort hard-coded for now */
+    uint16_t network_glort; 
 };
 
 struct netdev_rxq_dpdk {
@@ -492,6 +499,9 @@ dpdk_eth_dev_init(struct netdev_dpdk *dev) OVS_REQUIRES(dpdk_mutex)
     mbp_priv = rte_mempool_get_priv(dev->dpdk_mp->mp);
     dev->buf_size = mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM;
 
+    /* hard code sglort now fix coming soon */
+    dev->network_glort = DPDK_NETWORK_GLORT;  
+
     dev->flags = NETDEV_UP | NETDEV_PROMISC;
     return 0;
 }
@@ -553,6 +563,9 @@ netdev_dpdk_init(struct netdev *netdev_, unsigned int port_no,
     netdev->flags = 0;
     netdev->mtu = ETHER_MTU;
     netdev->max_packet_len = MTU_TO_MAX_LEN(netdev->mtu);
+
+VLOG_WARN("%s: max packet len %i\n", netdev_->name, netdev->max_packet_len);
+
     rte_spinlock_init(&netdev->txq_lock);
 
     netdev->dpdk_mp = dpdk_mp_get(netdev->socket_id, netdev->mtu);
@@ -876,14 +889,29 @@ netdev_dpdk_vhost_rxq_recv(struct netdev_rxq *rxq_,
     return 0;
 }
 
+/* Should only reach this case if VF enabled hopefully this is
+ * acceptable performance trade-off */
+static bool
+is_glort_network(struct rte_mbuf *mb, struct netdev_dpdk *dev)
+{
+	uint16_t *user_data;
+	uint16_t src_glort;
+
+ 	user_data = &mb->udata64;
+ 	src_glort = user_data[1];
+
+	printf("%s: src_glort %04x %u\n", __func__, src_glort, src_glort);
+	return src_glort == dev->network_glort;
+}
+
 static int
 netdev_dpdk_rxq_recv(struct netdev_rxq *rxq_, struct dp_packet **packets,
-                     int *c)
+                     int *c, odp_port_t *port)
 {
     struct netdev_rxq_dpdk *rx = netdev_rxq_dpdk_cast(rxq_);
     struct netdev *netdev = rx->up.netdev;
     struct netdev_dpdk *dev = netdev_dpdk_cast(netdev);
-    int nb_rx;
+    int i, nb_rx;
 
     /* There is only one tx queue for this core.  Do not flush other
      * queueus. */
@@ -897,6 +925,15 @@ netdev_dpdk_rxq_recv(struct netdev_rxq *rxq_, struct dp_packet **packets,
                                  (int)MAX_RX_QUEUE_LEN));
     if (!nb_rx) {
         return EAGAIN;
+    }
+
+    for (i = 0; i < nb_rx; i++) { 
+        struct rte_mbuf *p = (struct rte_mbuf *)packets[i];
+
+	if (dev->network_glort && (is_glort_network(p, dev) == false)) {
+printf("%s: vf pkt assign %i\n", __func__, vf_odp_port);
+		*port = vf_odp_port;
+	}
     }
 
     *c = nb_rx;
@@ -1100,7 +1137,7 @@ netdev_dpdk_send__(struct netdev_dpdk *dev, int qid,
     }
 }
 
-static int
+int
 netdev_dpdk_eth_send(struct netdev *netdev, int qid,
                      struct dp_packet **pkts, int cnt, bool may_steal)
 {
@@ -1180,12 +1217,15 @@ netdev_dpdk_set_mtu(const struct netdev *netdev, int mtu)
     dev->mtu = mtu;
     dev->max_packet_len = MTU_TO_MAX_LEN(dev->mtu);
 
+VLOG_WARN("%s: max packet len %i\n", netdev->name, dev->max_packet_len);
+
     err = dpdk_eth_dev_init(dev);
     if (err) {
         dpdk_mp_put(mp);
         dev->mtu = old_mtu;
         dev->dpdk_mp = old_mp;
         dev->max_packet_len = MTU_TO_MAX_LEN(dev->mtu);
+VLOG_WARN("%s: init err max packet len %i\n", netdev->name, dev->max_packet_len);
         dpdk_eth_dev_init(dev);
         goto out;
     }
@@ -1798,6 +1838,7 @@ unlock_dpdk:
     netdev_dpdk_dealloc,                                      \
     netdev_dpdk_get_config,                                   \
     NULL,                       /* netdev_dpdk_set_config */  \
+    NULL,                       /* set_port_no */	      \
     NULL,                       /* get_tunnel_config */       \
     NULL,                       /* build header */            \
     NULL,                       /* push header */             \

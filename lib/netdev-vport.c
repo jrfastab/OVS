@@ -49,6 +49,8 @@
 #include "unixctl.h"
 #include "util.h"
 
+#include "flowlib_fi.h"
+
 VLOG_DEFINE_THIS_MODULE(netdev_vport);
 static struct vlog_rate_limit err_rl = VLOG_RATE_LIMIT_INIT(60, 5);
 
@@ -425,6 +427,7 @@ set_tunnel_config(struct netdev *dev_, const struct smap *args)
     bool ipsec_mech_set, needs_dst_port, has_csum;
     struct netdev_tunnel_config tnl_cfg;
     struct smap_node *node;
+    int err;
 
     has_csum = strstr(type, "gre") || strstr(type, "geneve") ||
                strstr(type, "vxlan");
@@ -610,6 +613,13 @@ set_tunnel_config(struct netdev *dev_, const struct smap *args)
     tnl_cfg.out_key = parse_key(args, "out_key",
                                &tnl_cfg.out_key_present,
                                &tnl_cfg.out_key_flow);
+
+#if 0
+    err = flow_fi_vxlan_cfg(tnl_cfg.dst_port);
+    if (err)
+	VLOG_WARN("%s: hardware can not support tnl_cfg dst_port %i\n",
+		  name, tnl_cfg.dst_port);
+#endif
 
     ovs_mutex_lock(&dev->mutex);
     if (memcmp(&dev->tnl_cfg, &tnl_cfg, sizeof tnl_cfg)) {
@@ -1237,6 +1247,7 @@ netdev_vport_range(struct unixctl_conn *conn, int argc,
     netdev_vport_dealloc,                                   \
     GET_CONFIG,                                             \
     SET_CONFIG,                                             \
+    NULL,						    \
     GET_TUNNEL_CONFIG,                                      \
     BUILD_HEADER,                                           \
     PUSH_HEADER,                                            \
