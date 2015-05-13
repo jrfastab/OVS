@@ -1220,23 +1220,6 @@ netdev_linux_send_wait(struct netdev *netdev, int qid OVS_UNUSED)
     }
 }
 
-/* duplicated in dpif-netdev.c*/
-static uint32_t
-netdev_vf_hw_pid_lookup(void)
-{
-    FILE *fd = fopen(FLOWLIB_PID_FILE, "r");	
-    uint32_t pid;
-
-    if (fd < 0) {
-        VLOG_WARN("no hardware support 'daemon is not listening'");
-        return 0;
-    }
-
-    fscanf(fd, "%" SCNu32 "", &pid);
-    VLOG_WARN("Found pid %lu\n", pid);
-    return pid;
-}
-
 /* Attempts to set 'netdev''s MAC address to 'mac'.  Returns 0 if successful,
  * otherwise a positive errno value. */
 static int
@@ -1298,27 +1281,6 @@ netdev_linux_set_etheraddr(struct netdev *netdev_,
         update_flags(netdev, 0, NETDEV_UP, &old_flags);
     }
 
-    /* setup hardware configuration channel */
-#if 0
-    mac_rule.actions[0].args = as;
-
-    macp = &m[0].v.u64.value_u64;
-    macp[0] = mac[5];
-    macp[1] = mac[4];
-    macp[2] = mac[3];
-    macp[3] = mac[2];
-    macp[4] = mac[1];
-    macp[5] = mac[0];
-
-    m[0].v.u64.mask_u64 = 0xffffffff;
-    error = flow_fi_set_flows(flow_fi_get_socket(), netdev_vf_hw_pid_lookup(), 0,
-			    555, &mac_rule);
-
-    if (error)
-	VLOG_WARN("failed set flow mac addr\n");
-    else
-	VLOG_WARN("set mac addr\n");
-#endif
 exit:
     ovs_mutex_unlock(&netdev->mutex);
     return error;

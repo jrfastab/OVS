@@ -667,7 +667,7 @@ dpif_hw_pid_lookup(void)
     FILE *fd = fopen(FLOWLIB_PID_FILE, "r");
     uint32_t pid;
 
-    if (fd < 0) {
+    if (!fd) {
         VLOG_WARN("no hardware support 'daemon is not listening'");
         return 0;
     }
