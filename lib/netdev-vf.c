@@ -649,6 +649,21 @@ static void eventHandler(fm_int event, fm_int sw, void *ptr)
 	}
 }
 
+static void
+dp_netdev_flow_mac_to_value(uint64_t *value, uint8_t *mac)
+{
+	uint8_t *pmac = (uint8_t *)value;
+
+	pmac[0] = mac[5];
+	pmac[1] = mac[4];
+	pmac[2] = mac[3];
+	pmac[3] = mac[2];
+	pmac[4] = mac[1];
+	pmac[5] = mac[0];
+
+	return;
+}
+
 static int
 netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
 {
@@ -659,6 +674,8 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
     uint16_t lport = 0;
     int err = 0;
     uint8_t bus = 0, device = 0, function = 0;
+    uint8_t src_te_mac[ETH_ADDR_LEN];
+    uint8_t tunnel_engine_mac[ETH_ADDR_LEN] = {0,1,2,3,4,5};
 
     /* Tunnel Engine Dflt Rule */
     struct net_flow_named_value te_set_port = {
@@ -667,8 +684,20 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
 		.type = NET_FLOW_NAMED_VALUE_TYPE_U16,
 		.value.u16 = 0,
     };
+    struct net_flow_named_value te_set_dmac = {
+		.name = NULL,
+		.uid = NET_FLOW_TABLE_ATTR_NAMED_VALUE_VXLAN_DST_MAC,
+		.type = NET_FLOW_NAMED_VALUE_TYPE_U64,
+		.value.u64 = 0,
+    };
+    struct net_flow_named_value te_set_smac = {
+		.name = NULL,
+		.uid = NET_FLOW_TABLE_ATTR_NAMED_VALUE_VXLAN_SRC_MAC,
+		.type = NET_FLOW_NAMED_VALUE_TYPE_U64,
+		.value.u64 = 0,
+    };
     struct net_flow_named_value te_zero = {.name = NULL, .uid = 0, .type = 0, .value.u64 = 0};
-    struct net_flow_named_value te_attribs[3];
+    struct net_flow_named_value te_attribs[4];
     struct net_flow_tbl te_A_update = {.name = NULL, };
     struct net_flow_tbl te_B_update = {.name = NULL, };
 
@@ -692,7 +721,7 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
 		  .field = HEADER_IPV4_DST_IP,
 		  .mask_type = NET_FLOW_MASK_TYPE_LPM,},
                 {0}};
-    __u32 tcam_actions[] = {ACTION_SET_EGRESS_PORT, ACTION_FORWARD_TO_TE_A, ACTION_COUNT, 0};
+    __u32 tcam_actions[] = {ACTION_SET_EGRESS_PORT, ACTION_FORWARD_TO_TE_A, ACTION_ROUTE_VIA_ECMP, ACTION_COUNT, 0};
 
     /* Tunnel Encap Table */
     struct net_flow_tbl encap_table;
@@ -897,9 +926,15 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
         VLOG_WARN("%s: error set default pf flow failed %i\n", name, err);
 
     /* Update Tunnel Engine to use src mac address */
+    netdev_get_etheraddr(dev->root, src_te_mac);
+    dp_netdev_flow_mac_to_value(&te_set_dmac.value.u64, tunnel_engine_mac);
+    dp_netdev_flow_mac_to_value(&te_set_smac.value.u64, src_te_mac);
+
     te_set_port.value.u16 = 22;
     te_attribs[0] = te_set_port;
-    te_attribs[1] = te_zero;
+    te_attribs[1] = te_set_dmac;
+    te_attribs[2] = te_set_smac;
+    te_attribs[3] = te_zero;
     te_A_update.uid = 2;
     te_B_update.uid = 3;
     te_A_update.attribs = te_attribs;

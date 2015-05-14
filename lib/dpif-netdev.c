@@ -1789,32 +1789,17 @@ dp_netdev_flow_add_hw(struct dp_netdev *dp,
 	const struct nlattr *a;
 	unsigned int left;
 
+	uint8_t te_dst_mac[ETH_ADDR_LEN] = {0,1,2,3,4,5};
+
 	static uint32_t _fwd_to_encap_id = 40;
 	static uint32_t _fwd_to_decap_id = 50;
+	static uint32_t _fwd_to_nh_id = 60;
 	static uint32_t _encap_tnl_id = 1;
 	static uint32_t _decap_tnl_id = 10;
 
 	/* Generic count action */
 	struct net_flow_action action_cnt = { .name = "count", .uid = ACTION_COUNT, .args = NULL};
 
-	/* WIP: writing usable functional interfaces this is ugly */
-	/* Table to update tunnel engine */
-	struct net_flow_named_value te_set_dmac = {
-		.name = NULL,
-		.uid = NET_FLOW_TABLE_ATTR_NAMED_VALUE_VXLAN_DST_MAC,
-		.type = NET_FLOW_NAMED_VALUE_TYPE_U64,
-		.value.u64 = 0,
-	};
-	struct net_flow_named_value te_set_smac = {
-		.name = NULL,
-		.uid = NET_FLOW_TABLE_ATTR_NAMED_VALUE_VXLAN_SRC_MAC,
-		.type = NET_FLOW_NAMED_VALUE_TYPE_U64,
-		.value.u64 = 0,
-	};
-	struct net_flow_named_value te_zero = {.name = NULL, .uid = 0, .type = 0, .value.u64 = 0};
-	struct net_flow_named_value te_attribs[3];
-	struct net_flow_tbl te_A_update = {.name = NULL, };
-	struct net_flow_tbl te_B_update = {.name = NULL, };
 	/* Rule to do tunnel encap */
 	struct net_flow_field_ref tunnel_match0 =
 			     { .instance = HEADER_INSTANCE_ETHERNET,
@@ -1958,6 +1943,71 @@ dp_netdev_flow_add_hw(struct dp_netdev *dp,
 		  .hw_flowid = 0,
 		  .matches = tcam_decap_matchs,
 		  .actions = tcam_decap_actions};
+	/* Rule to forward to nexthop for traffic after encap */
+	struct net_flow_field_ref tcam_nh_match0 =
+			     { .instance = HEADER_INSTANCE_ETHERNET,
+			       .header = HEADER_ETHERNET,
+			       .field = HEADER_ETHERNET_DST_MAC,
+			       .mask_type = NET_FLOW_MASK_TYPE_MASK,
+			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U64,
+			       .v.u64.value_u64 = 2,
+			       .v.u64.mask_u64 = 0x0000ffffffffffff};
+	struct net_flow_field_ref tcam_nh_match1 =
+			     { .instance = HEADER_INSTANCE_ETHERNET,
+			       .header = HEADER_ETHERNET,
+			       .field = HEADER_ETHERNET_SRC_MAC,
+			       .mask_type = NET_FLOW_MASK_TYPE_MASK,
+			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U64,
+			       .v.u64.value_u64 = 2,
+			       .v.u64.mask_u64 = 0x0000ffffffffffff};
+	struct net_flow_field_ref tcam_nh_match2 =
+			     { .instance = HEADER_INSTANCE_IPV4,
+			       .header = HEADER_IPV4,
+			       .field = HEADER_IPV4_DST_IP,
+			       .mask_type = NET_FLOW_MASK_TYPE_MASK,
+			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U32,
+			       .v.u32.value_u32 = 0xdeadbeef,
+			       .v.u32.mask_u32 = 0xffffffff};
+
+	struct net_flow_field_ref tcam_nh_matchs[4] = {{0}, {0}, {0}, {0}};
+	struct net_flow_action_arg arg_nh_table = {.name = "ecmp_group_id", .type = NET_FLOW_ACTION_ARG_TYPE_U16, .v.value_u16 = 0};
+	struct net_flow_action_arg nh_args[2] = {{0}, {0}};
+	struct net_flow_action tcam_nh_action = { .name = "route_via_ecmp_str", .uid = ACTION_ROUTE_VIA_ECMP, .args = nh_args };
+	struct net_flow_action tcam_nh_actions[3] = {tcam_nh_action, action_cnt, {0}};
+
+	struct net_flow_flow tcam_fwd_to_nh_rule = {
+		  .table_id = 20,
+		  .uid = ++_fwd_to_nh_id,
+		  .priority = 20,
+		  .hw_flowid = 0,
+		  .matches = tcam_nh_matchs,
+		  .actions = tcam_nh_actions};
+
+	/* NextHop rule to set DMAC */
+	struct net_flow_field_ref nh_match0 =
+			     { .instance = HEADER_INSTANCE_ROUTING_METADATA,
+			       .header = HEADER_METADATA,
+			       .field = HEADER_METADATA_ECMP_GROUP_ID,
+			       .mask_type = NET_FLOW_MASK_TYPE_EXACT,
+			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U32,
+			       .v.u32.value_u32 = 0,
+			       .v.u32.mask_u32 = 0xfffffffff};
+	struct net_flow_field_ref nh_matchs[2] = {{0}, {0}};
+	struct net_flow_action_arg arg_route_dmac = {.name = "newDMAC", .type = NET_FLOW_ACTION_ARG_TYPE_U64, .v.value_u64 = 0};
+	struct net_flow_action_arg arg_route_vlan = {.name = "newVLAN", .type = NET_FLOW_ACTION_ARG_TYPE_U16, .v.value_u16 = 0};
+	struct net_flow_action_arg nh_action_args[3] = {{0}, {0}, {0}};
+
+	struct net_flow_action nh_action = { .name = "route", .uid = ACTION_ROUTE, .args = nh_action_args };
+	struct net_flow_action nh_actions[2] = {nh_action, {0}};
+
+	struct net_flow_flow nh_rule = {
+		  .table_id = 4,
+		  .uid = ++_fwd_to_nh_id,
+		  .priority = 20,
+		  .hw_flowid = 0,
+		  .matches = nh_matchs,
+		  .actions = nh_actions};
+
 
 	VLOG_WARN("tun_id %" PRIu64 " tun_src " IP_FMT " tun_dst " IP_FMT "\n"
 		  "in_port %" PRIu16 "\n"
@@ -2000,8 +2050,10 @@ dp_netdev_flow_add_hw(struct dp_netdev *dp,
 			vxh = (const struct vxlanhdr *)(udp + 1);
 
 			in = dp_netdev_lookup_port(dp, u32_to_odp(f->in_port.ofp_port));
-		    	if (!netdev_is_vf(in->netdev))
+		    	if (!netdev_is_vf(in->netdev)) {
+			//	printf("%s: tnl_push on %i\n", f->in_port.ofp_port);
 				return;
+			}
 
 			/* Encap arguments */
 			encap_arg_dip.v.value_u32 = get_16aligned_be32(&ip->ip_dst);
@@ -2022,22 +2074,6 @@ dp_netdev_flow_add_hw(struct dp_netdev *dp,
 			te_args[1].name = NULL;
 			te_args[1].type = 0;
 
-			/* configure tunnel engine to use src_mac should be done when vxlan0
-			 * is added*/
-			dp_netdev_flow_mac_to_value(&te_set_dmac.value.u64, eth->eth_dst);
-			dp_netdev_flow_mac_to_value(&te_set_smac.value.u64, eth->eth_src);
-
-			te_attribs[0] = te_set_dmac;
-			te_attribs[1] = te_set_smac;
-			te_attribs[2] = te_zero;
-			te_A_update.uid = 2;
-			te_B_update.uid = 3;
-			te_A_update.attribs = te_attribs;
-			te_B_update.attribs = te_attribs;
-
-			flow_fi_update_table(hw->nsd, hw->pid, 0 , hw->family, &te_A_update);
-			flow_fi_update_table(hw->nsd, hw->pid, 0 , hw->family, &te_B_update);
-			
 			/* add rule to map flow to tunnel engine and encap in tunnel engine */
 			dp_netdev_flow_mac_to_value(&tcam_encap_match0.v.u64.value_u64, f->dl_dst);
 			dp_netdev_flow_mac_to_value(&tcam_encap_match1.v.u64.value_u64, f->dl_src);
@@ -2049,6 +2085,33 @@ dp_netdev_flow_add_hw(struct dp_netdev *dp,
 
 		 	encap_match[0] = tcam_encap_match0;
  			encap_match[1] = tcam_encap_match1;
+
+			/* add rule to map flow to nexthop table after encap */
+			dp_netdev_flow_mac_to_value(&tcam_nh_match0.v.u64.value_u64, te_dst_mac);
+			dp_netdev_flow_mac_to_value(&tcam_nh_match1.v.u64.value_u64, eth->eth_src);
+			tcam_nh_match2.v.u32.value_u32 = get_16aligned_be32(&ip->ip_dst);
+
+			tcam_nh_matchs[0] = tcam_nh_match0;
+			tcam_nh_matchs[1] = tcam_nh_match1;
+			tcam_nh_matchs[2] = tcam_nh_match2;
+			arg_nh_table.v.value_u16 = _fwd_to_nh_id;
+			nh_args[0] = arg_nh_table;
+
+			/* add rule to nexthop table to set DMAC/VLAN */
+			nh_match0.v.u32.value_u32 = _fwd_to_nh_id;
+			nh_matchs[0] = nh_match0;
+
+			dp_netdev_flow_mac_to_value(&arg_route_dmac.v.value_u64, eth->eth_dst);
+			arg_route_vlan.v.value_u16 = 1; // Magic number default VLAN
+
+			nh_action_args[0] = arg_route_dmac;
+			nh_action_args[1] = arg_route_vlan;
+
+			/* Order is important here to avoid having flows hit the TCAM without a
+			 * nexthop rule in place.
+			 */ 
+    			flow_fi_set_flows(hw->nsd, hw->pid, 0, hw->family, &nh_rule);
+    			flow_fi_set_flows(hw->nsd, hw->pid, 0, hw->family, &tcam_fwd_to_nh_rule);
 
     			flow_fi_set_flows(hw->nsd, hw->pid, 0, hw->family, &tcam_fwd_to_te_rule);
     			flow_fi_set_flows(hw->nsd, hw->pid, 0, hw->family, &tunnel_encap_rule);
