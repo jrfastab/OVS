@@ -1890,8 +1890,15 @@ dp_netdev_flow_add_hw(struct dp_netdev *dp,
 			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U32,
 			       .v.u32.value_u32 = 0xdeadbeef,
 			       .v.u32.mask_u32 = 0xfff};
-
-	struct net_flow_field_ref tcam_encap_matchs[4] = {{0}, {0}, {0}, {0}};
+	struct net_flow_field_ref tcam_encap_match3 = 
+			     { .instance = HEADER_INSTANCE_ETHERNET,
+			       .header = HEADER_ETHERNET,
+			       .field = HEADER_ETHERNET_ETHERTYPE,
+			       .mask_type = NET_FLOW_MASK_TYPE_MASK,
+			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U64,
+			       .v.u16.value_u16 = 0x0800,
+			       .v.u16.mask_u16 = 0xffff};
+	struct net_flow_field_ref tcam_encap_matchs[5] = {{0}, {0}, {0}, {0}, {0}};
 	struct net_flow_action_arg arg_te_table = {.name = "sub-table", .type = NET_FLOW_ACTION_ARG_TYPE_U16, .v.value_u16 = 0x1E};
 	struct net_flow_action_arg te_args[2] = {{0}, {0}};
 	struct net_flow_action tcam_action = { .name = "forward_to_tunnel_engine_A", .uid = ACTION_FORWARD_TO_TE_A, .args = te_args };
@@ -1930,7 +1937,16 @@ dp_netdev_flow_add_hw(struct dp_netdev *dp,
 			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U32,
 			       .v.u32.value_u32 = 5, /* hard-coded network value */
 			       .v.u32.mask_u32 = 0xfff};
-	struct net_flow_field_ref tcam_decap_matchs[4] = {{0}, {0}, {0}, {0}};
+	struct net_flow_field_ref tcam_decap_match3 = 
+			     { .instance = HEADER_INSTANCE_ETHERNET,
+			       .header = HEADER_ETHERNET,
+			       .field = HEADER_ETHERNET_ETHERTYPE,
+			       .mask_type = NET_FLOW_MASK_TYPE_MASK,
+			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U64,
+			       .v.u16.value_u16 = 0x0800,
+			       .v.u16.mask_u16 = 0xffff};
+
+	struct net_flow_field_ref tcam_decap_matchs[5] = {{0}, {0}, {0}, {0}, {0}};
 	struct net_flow_action_arg arg_te_decap_table = {.name = "sub-table", .type = NET_FLOW_ACTION_ARG_TYPE_U16, .v.value_u16 = 31};
 	struct net_flow_action_arg te_decap_args[] = {{0}, {0}};
 	struct net_flow_action tcam_decap_action = { .name = "forward_to_tunnel_engine_A", .uid = ACTION_FORWARD_TO_TE_A, .args = te_decap_args };
@@ -2082,7 +2098,7 @@ dp_netdev_flow_add_hw(struct dp_netdev *dp,
 			tcam_encap_matchs[0] = tcam_encap_match0;
 			tcam_encap_matchs[1] = tcam_encap_match1;
 			tcam_encap_matchs[2] = tcam_encap_match2;
-
+			tcam_encap_matchs[3] = tcam_encap_match3;
 		 	encap_match[0] = tcam_encap_match0;
  			encap_match[1] = tcam_encap_match1;
 
@@ -2128,6 +2144,7 @@ dp_netdev_flow_add_hw(struct dp_netdev *dp,
 			tcam_decap_matchs[0] = tcam_decap_match0;
 			tcam_decap_matchs[1] = tcam_decap_match1;
 			tcam_decap_matchs[2] = tcam_decap_match2;
+			tcam_decap_matchs[3] = tcam_decap_match3;
 
     			flow_fi_set_flows(hw->nsd, hw->pid, 0, hw->family, &tcam_fwd_to_decap_te_rule);
 
