@@ -85,7 +85,6 @@ VLOG_DEFINE_THIS_MODULE(netdev_vf);
 /* clumsy hack for the moment because we leak into netdev-dpdk
  * to handle receive side and set the lport value
  */
-uint8_t vf_eth_src[ETH_ADDR_LEN] = {0xa0, 0x36, 0x9f, 0x60, 0xb2, 0x14};
 int vf_odp_port;
 #define FLOW_FI_FAMILY 555
 #define FM_MAIN_SWITCH 0 /* is this a safe pattern? */

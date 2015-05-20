@@ -3,7 +3,6 @@
  * ugly. We should put the info in the descriptor and then set it correctly
  * in DPDK _or_ have a queue per vf?
  */
-extern uint8_t vf_eth_src[ETH_ADDR_LEN];
 extern int vf_odp_port;
 
 void netdev_vf_register(void);

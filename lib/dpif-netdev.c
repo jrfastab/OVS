@@ -2033,7 +2033,7 @@ dp_netdev_flow_add_hw(struct dp_netdev *dp,
 		    	if (!netdev_is_vf(out->netdev))
 				return;
 
-			dp_netdev_flow_mac_to_value(&tunnel_decap_match0.v.u64.value_u64, vf_eth_src);
+			dp_netdev_flow_mac_to_value(&tunnel_decap_match0.v.u64.value_u64, f->dl_dst);
 			dp_netdev_flow_mac_to_value(&tunnel_decap_match1.v.u64.value_u64, f->dl_src);
 
 			decap_match[0] = tunnel_decap_match0;
