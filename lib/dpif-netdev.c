@@ -70,7 +70,7 @@
 #include "util.h"
 #include "openvswitch/vlog.h"
 
-#include "/home/csig_sdnd-flow_tool/include/flowlib_fi.h"
+#include "/home/csig_sdnd-flow_tool/include/flowlib_nl.h"
 #include "/home/csig_sdnd-flow_tool/include/if_flow.h"
 #include "/home/csig_sdnd-flow_tool/models/ies_pipeline.h"
 
@@ -699,7 +699,7 @@ dpif_netdev_open(const struct dpif_class *class, const char *name,
     }
     ovs_mutex_unlock(&dp_netdev_mutex);
 
-    dp->hw.nsd = flow_fi_get_socket();
+    dp->hw.nsd = flow_nl_get_socket();
     dp->hw.pid = dpif_hw_pid_lookup();
     dp->hw.family = FLOW_FI_FAMILY;
 
@@ -2055,7 +2055,7 @@ dp_netdev_flow_add_hw(struct dp_netdev *dp,
 			decap_match[0] = tunnel_decap_match0;
 			decap_match[1] = tunnel_decap_match1;
 
-    			flow_fi_set_flows(hw->nsd, hw->pid, 0, hw->family, &tunnel_decap_rule);
+    			flow_nl_set_flows(hw->nsd, hw->pid, 0, hw->family, &tunnel_decap_rule);
 			break;
 		case OVS_ACTION_ATTR_TUNNEL_PUSH:
 			data = (struct ovs_action_push_tnl *)nl_attr_get(a);
@@ -2126,11 +2126,11 @@ dp_netdev_flow_add_hw(struct dp_netdev *dp,
 			/* Order is important here to avoid having flows hit the TCAM without a
 			 * nexthop rule in place.
 			 */ 
-    			flow_fi_set_flows(hw->nsd, hw->pid, 0, hw->family, &nh_rule);
-    			flow_fi_set_flows(hw->nsd, hw->pid, 0, hw->family, &tcam_fwd_to_nh_rule);
+    			flow_nl_set_flows(hw->nsd, hw->pid, 0, hw->family, &nh_rule);
+    			flow_nl_set_flows(hw->nsd, hw->pid, 0, hw->family, &tcam_fwd_to_nh_rule);
 
-    			flow_fi_set_flows(hw->nsd, hw->pid, 0, hw->family, &tcam_fwd_to_te_rule);
-    			flow_fi_set_flows(hw->nsd, hw->pid, 0, hw->family, &tunnel_encap_rule);
+    			flow_nl_set_flows(hw->nsd, hw->pid, 0, hw->family, &tcam_fwd_to_te_rule);
+    			flow_nl_set_flows(hw->nsd, hw->pid, 0, hw->family, &tunnel_encap_rule);
 
 			VLOG_WARN("tunnel push\n");
 			break;
@@ -2146,7 +2146,7 @@ dp_netdev_flow_add_hw(struct dp_netdev *dp,
 			tcam_decap_matchs[2] = tcam_decap_match2;
 			tcam_decap_matchs[3] = tcam_decap_match3;
 
-    			flow_fi_set_flows(hw->nsd, hw->pid, 0, hw->family, &tcam_fwd_to_decap_te_rule);
+    			flow_nl_set_flows(hw->nsd, hw->pid, 0, hw->family, &tcam_fwd_to_decap_te_rule);
 
 			VLOG_WARN("tunnel pop\n");
 			break;

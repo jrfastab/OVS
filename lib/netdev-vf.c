@@ -75,7 +75,7 @@
 #include "openvswitch/vlog.h"
 
 #include "if_flow.h"
-#include "flowlib_fi.h"
+#include "flowlib_nl.h"
 #include "/home/csig_sdnd-flow_tool/models/ies_pipeline.h"
 #include "fm_sdk.h"
 #include "netdev-dpdk.h"
@@ -679,7 +679,7 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
     /* Tunnel Engine Dflt Rule */
     struct net_flow_named_value te_set_port = {
 		.name = NULL,
-		.uid = NET_FLOW_TABLE_ATTR_NAMED_VALUE_MISS_DFLT_PORT,
+		.uid = NET_FLOW_TABLE_ATTR_NAMED_VALUE_MISS_DFLT_EGRESS_PORT,
 		.type = NET_FLOW_NAMED_VALUE_TYPE_U16,
 		.value.u16 = 0,
     };
@@ -826,7 +826,7 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
     dev->tnl.out_key = 0;
 
     /* setup hardware configuration channel */
-    dev->hw.nsd = flow_fi_get_socket();
+    dev->hw.nsd = flow_nl_get_socket();
     dev->hw.pid = netdev_vf_hw_pid_lookup();
     dev->hw.family = FLOW_FI_FAMILY;
     dev->hw.sw = FM_MAIN_SWITCH;
@@ -862,11 +862,11 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
         }
     }
 
-    /* flow_fi_pci_lport is currently buggy so require input from cmd line */
+    /* flow_nl_pci_lport is currently buggy so require input from cmd line */
     if (lport)
         dev->hw.vf_lport = lport;
     else
-        err = flow_fi_pci_lport(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family,
+        err = flow_nl_pci_lport(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family,
 			        bus, device, function, &dev->hw.vf_lport);
 
     if (err) {
@@ -886,7 +886,7 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
     tcam_table.matches = tcam_matches;
     tcam_table.actions = tcam_actions;
     tcam_table.attribs = NULL;
-    err = flow_fi_create_table(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family, &tcam_table);
+    err = flow_nl_create_table(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family, &tcam_table);
     if (err)
         VLOG_WARN("%s: error create tcam table failed %i\n", name, err);
 
@@ -898,7 +898,7 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
     encap_table.matches = tunnel_matches;
     encap_table.actions = encap_actions;
     encap_table.attribs = NULL;
-    err = flow_fi_create_table(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family, &encap_table);
+    err = flow_nl_create_table(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family, &encap_table);
     if (err)
         VLOG_WARN("%s: error create encap table failed %i\n", name, err);
 
@@ -910,7 +910,7 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
     decap_table.matches = tunnel_decap_matches;
     decap_table.actions = decap_actions;
     decap_table.attribs = NULL;
-    err = flow_fi_create_table(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family, &decap_table);
+    err = flow_nl_create_table(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family, &decap_table);
     if (err)
         VLOG_WARN("%s: error create decap table failed %i\n", name, err);
 
@@ -919,12 +919,12 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
     arg.v.value_u32 = dev->hw.pf_lport; /* pep0 id */
     m[0].v.u32.value_u32 = dev->hw.vf_lport;
     m[0].v.u32.mask_u32 = 0xffffffff;
-    err = flow_fi_set_flows(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family, &vf_dflt_rule);
+    err = flow_nl_set_flows(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family, &vf_dflt_rule);
     if (err)
         VLOG_WARN("%s: error set default vf flow failed %i\n", name, err);
 
     /* Add rule to map network to PF by default */
-    err = flow_fi_set_flows(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family, &pf_dflt_rule);
+    err = flow_nl_set_flows(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family, &pf_dflt_rule);
     if (err)
         VLOG_WARN("%s: error set default pf flow failed %i\n", name, err);
 
@@ -943,8 +943,8 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
     te_A_update.attribs = te_attribs;
     te_B_update.attribs = te_attribs;
 
-    flow_fi_update_table(dev->hw.nsd, dev->hw.pid, 0 , dev->hw.family, &te_A_update);
-    flow_fi_update_table(dev->hw.nsd, dev->hw.pid, 0 , dev->hw.family, &te_B_update);
+    flow_nl_update_table(dev->hw.nsd, dev->hw.pid, 0 , dev->hw.family, &te_A_update);
+    flow_nl_update_table(dev->hw.nsd, dev->hw.pid, 0 , dev->hw.family, &te_B_update);
 
     return 0;
 }

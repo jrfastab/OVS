@@ -49,7 +49,7 @@
 #include "unixctl.h"
 #include "util.h"
 
-#include "flowlib_fi.h"
+#include "flowlib_nl.h"
 
 VLOG_DEFINE_THIS_MODULE(netdev_vport);
 static struct vlog_rate_limit err_rl = VLOG_RATE_LIMIT_INIT(60, 5);
