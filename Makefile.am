@@ -35,7 +35,7 @@ AM_CPPFLAGS += $(SSL_INCLUDES)
 AM_CFLAGS = -Wstrict-prototypes -mssse3
 AM_CFLAGS += $(WARNING_FLAGS)
 AM_CFLAGS += $(OVS_CFLAGS)
-AM_CFLAGS += -I $(FLOWLIB)/include -I$(SDK)/include
+AM_CFLAGS += -I $(FLOWLIB)/include -I$(SDK)/include -I $(FLOWLIB)/models
 
 if DPDK_NETDEV
 AM_CFLAGS += -D_FILE_OFFSET_BITS=64

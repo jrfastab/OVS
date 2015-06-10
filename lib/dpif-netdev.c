@@ -72,7 +72,7 @@
 
 #include "matchlib_nl.h"
 #include "if_match.h"
-#include "models/ies_pipeline.h"
+#include "ies_pipeline.h"
 
 #include "netdev-vf.h"
 
