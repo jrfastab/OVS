@@ -76,7 +76,7 @@
 
 #include "if_match.h"
 #include "matchlib_nl.h"
-#include "/home/csig_sdnd-flow_tool/models/ies_pipeline.h"
+#include "models/ies_pipeline.h"
 #include "fm_sdk.h"
 #include "netdev-dpdk.h"
 
