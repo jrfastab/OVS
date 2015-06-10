@@ -70,9 +70,9 @@
 #include "util.h"
 #include "openvswitch/vlog.h"
 
-#include "/home/csig_sdnd-flow_tool/include/matchlib_nl.h"
-#include "/home/csig_sdnd-flow_tool/include/if_match.h"
-#include "/home/csig_sdnd-flow_tool/models/ies_pipeline.h"
+#include "matchlib_nl.h"
+#include "if_match.h"
+#include "models/ies_pipeline.h"
 
 #include "netdev-vf.h"
 
