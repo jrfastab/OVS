@@ -11,7 +11,7 @@ SUBDIRS = datapath
 
 IES_LDFLAGS=-L$(SDK)/build -lFocalpointSDK -lpthread -ldl -lLTStdPlatform
 FLOWLIB_LDFLAGS=`pkg-config libnl-3.0 libnl-route-3.0 libnl-cli-3.0 libgvc --libs`
-FLOWLIB_LDFLAGS+=-L$(FLOWLIB)/lib/.libs -lflow -lflowd -lflowies
+FLOWLIB_LDFLAGS+=-L$(FLOWLIB)/lib/.libs -lmatch -lmatchd -lmatchies
 
 AM_CPPFLAGS = $(SSL_CFLAGS)
 AM_LDFLAGS = $(SSL_LDFLAGS)

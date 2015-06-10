@@ -49,7 +49,7 @@
 #include "unixctl.h"
 #include "util.h"
 
-#include "flowlib_nl.h"
+#include "matchlib_nl.h"
 
 VLOG_DEFINE_THIS_MODULE(netdev_vport);
 static struct vlog_rate_limit err_rl = VLOG_RATE_LIMIT_INIT(60, 5);
@@ -615,7 +615,7 @@ set_tunnel_config(struct netdev *dev_, const struct smap *args)
                                &tnl_cfg.out_key_flow);
 
 #if 0
-    err = flow_fi_vxlan_cfg(tnl_cfg.dst_port);
+    err = match_nl_vxlan_cfg(tnl_cfg.dst_port);
     if (err)
 	VLOG_WARN("%s: hardware can not support tnl_cfg dst_port %i\n",
 		  name, tnl_cfg.dst_port);

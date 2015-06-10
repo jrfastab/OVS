@@ -74,10 +74,10 @@
 #include "unaligned.h"
 #include "openvswitch/vlog.h"
 
-#include "if_flow.h"
+#include "if_match.h"
 //#include "/home/csig_sdnd-flow_tool/models/ies_pipeline.h"
 #include "fm_sdk.h"
-#include "flowlib_nl.h"
+#include "matchlib_nl.h"
 
 VLOG_DEFINE_THIS_MODULE(netdev_linux);
 
@@ -1232,25 +1232,25 @@ netdev_linux_set_etheraddr(struct netdev *netdev_,
     uint8_t *macp;
 
 #if 0
-    struct net_flow_field_ref m0 = { .instance = HEADER_INSTANCE_ETHERNET,
+    struct net_mat_field_ref m0 = { .instance = HEADER_INSTANCE_ETHERNET,
 			       .header = HEADER_ETHERNET,
 			       .field = HEADER_ETHERNET_DST_MAC,
-			       .mask_type = NET_FLOW_MASK_TYPE_MASK,
-			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U64,
+			       .mask_type = NET_MAT_MASK_TYPE_MASK,
+			       .type = NET_MAT_FIELD_REF_ATTR_TYPE_U64,
 			       .v.u64.value_u64 = 0,
 			       .v.u64.mask_u64 = 0xffffffffffffffff};
-    struct net_flow_field_ref m[] = {m0, 0};
-    struct net_flow_action a0 = { .name = "set_egress_port", .uid = ACTION_SET_EGRESS_PORT, .args = NULL };
-    struct net_flow_action a[] = {a0, 0};
-    struct net_flow_flow mac_rule = {
+    struct net_mat_field_ref m[] = {m0, 0};
+    struct net_mat_action a0 = { .name = "set_egress_port", .uid = ACTION_SET_EGRESS_PORT, .args = NULL };
+    struct net_mat_action a[] = {a0, 0};
+    struct net_mat_flow mac_rule = {
 		  .table_id = 5, /* hard coded mac table */
 		  .uid = 1,
 		  .priority = 10,
 		  .hw_flowid = 0,
 		  .matches = m,
 		  .actions = a};
-    struct net_flow_action_arg arg = {.name = "egress_port", .type = NET_FLOW_ACTION_ARG_TYPE_U32, .v.value_u32 = 22};
-    struct net_flow_action_arg as[] = {arg, 0};
+    struct net_mat_action_arg arg = {.name = "egress_port", .type = NET_MAT_ACTION_ARG_TYPE_U32, .v.value_u32 = 22};
+    struct net_mat_action_arg as[] = {arg, 0};
 #endif
 
     ovs_mutex_lock(&netdev->mutex);

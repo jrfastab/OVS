@@ -70,8 +70,8 @@
 #include "util.h"
 #include "openvswitch/vlog.h"
 
-#include "/home/csig_sdnd-flow_tool/include/flowlib_nl.h"
-#include "/home/csig_sdnd-flow_tool/include/if_flow.h"
+#include "/home/csig_sdnd-flow_tool/include/matchlib_nl.h"
+#include "/home/csig_sdnd-flow_tool/include/if_match.h"
 #include "/home/csig_sdnd-flow_tool/models/ies_pipeline.h"
 
 #include "netdev-vf.h"
@@ -664,7 +664,7 @@ create_dp_netdev(const char *name, const struct dpif_class *class,
 static uint32_t
 dpif_hw_pid_lookup(void)
 {
-    FILE *fd = fopen(FLOWLIB_PID_FILE, "r");
+    FILE *fd = fopen(MATCHLIB_PID_FILE, "r");
     uint32_t pid;
 
     if (!fd) {
@@ -699,7 +699,7 @@ dpif_netdev_open(const struct dpif_class *class, const char *name,
     }
     ovs_mutex_unlock(&dp_netdev_mutex);
 
-    dp->hw.nsd = flow_nl_get_socket();
+    dp->hw.nsd = match_nl_get_socket();
     dp->hw.pid = dpif_hw_pid_lookup();
     dp->hw.family = FLOW_FI_FAMILY;
 
@@ -1798,229 +1798,229 @@ dp_netdev_flow_add_hw(struct dp_netdev *dp,
 	static uint32_t _decap_tnl_id = 10;
 
 	/* Generic count action */
-	struct net_flow_action action_cnt = { .name = "count", .uid = ACTION_COUNT, .args = NULL};
+	struct net_mat_action action_cnt = { .name = "count", .uid = ACTION_COUNT, .args = NULL};
 
 	/* Rule to do tunnel encap */
-	struct net_flow_field_ref tunnel_match0 =
+	struct net_mat_field_ref tunnel_match0 =
 			     { .instance = HEADER_INSTANCE_ETHERNET,
 			       .header = HEADER_ETHERNET,
 			       .field = HEADER_ETHERNET_DST_MAC,
-			       .mask_type = NET_FLOW_MASK_TYPE_EXACT,
-			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U64,
+			       .mask_type = NET_MAT_MASK_TYPE_EXACT,
+			       .type = NET_MAT_FIELD_REF_ATTR_TYPE_U64,
 			       .v.u64.value_u64 = 2,
 			       .v.u64.mask_u64 = 0x0000ffffffffffff};
-	struct net_flow_field_ref tunnel_match1 =
+	struct net_mat_field_ref tunnel_match1 =
 			     { .instance = HEADER_INSTANCE_ETHERNET,
 			       .header = HEADER_ETHERNET,
 			       .field = HEADER_ETHERNET_SRC_MAC,
-			       .mask_type = NET_FLOW_MASK_TYPE_EXACT,
-			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U64,
+			       .mask_type = NET_MAT_MASK_TYPE_EXACT,
+			       .type = NET_MAT_FIELD_REF_ATTR_TYPE_U64,
 			       .v.u64.value_u64 = 2,
 			       .v.u64.mask_u64 = 0x0000ffffffffffff};
-	struct net_flow_field_ref tunnel_decap_match0 =
+	struct net_mat_field_ref tunnel_decap_match0 =
 			     { .instance = HEADER_INSTANCE_ETHERNET,
 			       .header = HEADER_ETHERNET,
 			       .field = HEADER_ETHERNET_DST_MAC,
-			       .mask_type = NET_FLOW_MASK_TYPE_EXACT,
-			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U64,
+			       .mask_type = NET_MAT_MASK_TYPE_EXACT,
+			       .type = NET_MAT_FIELD_REF_ATTR_TYPE_U64,
 			       .v.u64.value_u64 = 2,
 			       .v.u64.mask_u64 = 0x0000ffffffffffff};
-	struct net_flow_field_ref tunnel_decap_match1 =
+	struct net_mat_field_ref tunnel_decap_match1 =
 			     { .instance = HEADER_INSTANCE_ETHERNET,
 			       .header = HEADER_ETHERNET,
 			       .field = HEADER_ETHERNET_SRC_MAC,
-			       .mask_type = NET_FLOW_MASK_TYPE_EXACT,
-			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U64,
+			       .mask_type = NET_MAT_MASK_TYPE_EXACT,
+			       .type = NET_MAT_FIELD_REF_ATTR_TYPE_U64,
 			       .v.u64.value_u64 = 2,
 			       .v.u64.mask_u64 = 0x0000ffffffffffff};
-	struct net_flow_field_ref encap_match[3] = {{0}, {0}, {0}};
-	struct net_flow_action_arg encap_arg_dip = {.name = dst_ip, .type = NET_FLOW_ACTION_ARG_TYPE_U32, };
-	struct net_flow_action_arg encap_arg_sip = {.name = src_ip, .type = NET_FLOW_ACTION_ARG_TYPE_U32, };
-	struct net_flow_action_arg encap_arg_vni = {.name = vni, .type = NET_FLOW_ACTION_ARG_TYPE_U32, };
-	struct net_flow_action_arg encap_arg_sport = {.name = src_port, .type = NET_FLOW_ACTION_ARG_TYPE_U16, };
-	struct net_flow_action_arg encap_arg_dport = {.name = dst_port, .type = NET_FLOW_ACTION_ARG_TYPE_U16, };
-	struct net_flow_action_arg encap_arg_null = {.name = 0, .type = 0, };
-	struct net_flow_action_arg encap_args[6];
-	struct net_flow_action encap_action = { .name = tunnel_encap_str, .uid = ACTION_TUNNEL_ENCAP, .args = encap_args};
-	struct net_flow_action encap_actions[3] = {encap_action, action_cnt, 0};
+	struct net_mat_field_ref encap_match[3] = {{0}, {0}, {0}};
+	struct net_mat_action_arg encap_arg_dip = {.name = dst_ip, .type = NET_MAT_ACTION_ARG_TYPE_U32, };
+	struct net_mat_action_arg encap_arg_sip = {.name = src_ip, .type = NET_MAT_ACTION_ARG_TYPE_U32, };
+	struct net_mat_action_arg encap_arg_vni = {.name = vni, .type = NET_MAT_ACTION_ARG_TYPE_U32, };
+	struct net_mat_action_arg encap_arg_sport = {.name = src_port, .type = NET_MAT_ACTION_ARG_TYPE_U16, };
+	struct net_mat_action_arg encap_arg_dport = {.name = dst_port, .type = NET_MAT_ACTION_ARG_TYPE_U16, };
+	struct net_mat_action_arg encap_arg_null = {.name = 0, .type = 0, };
+	struct net_mat_action_arg encap_args[6];
+	struct net_mat_action encap_action = { .name = tunnel_encap_str, .uid = ACTION_TUNNEL_ENCAP, .args = encap_args};
+	struct net_mat_action encap_actions[3] = {encap_action, action_cnt, 0};
 
-	struct net_flow_flow tunnel_encap_rule = {
+	struct net_mat_rule tunnel_encap_rule = {
 		.table_id = 30,
 		.uid = _encap_tnl_id++,
 		.priority = 20,
-		.hw_flowid = 0,
+		.hw_ruleid = 0,
 		.matches = encap_match,
 		.actions = encap_actions};
 
 	/* Rule to do tunnel decap */
-	struct net_flow_field_ref decap_match[3] = {{0}, {0}, {0}};
-	struct net_flow_action decap_action = { .name = tunnel_decap_str, .uid = ACTION_TUNNEL_DECAP, .args = NULL};
-	struct net_flow_action decap_actions[3] = {decap_action, action_cnt, 0};
+	struct net_mat_field_ref decap_match[3] = {{0}, {0}, {0}};
+	struct net_mat_action decap_action = { .name = tunnel_decap_str, .uid = ACTION_TUNNEL_DECAP, .args = NULL};
+	struct net_mat_action decap_actions[3] = {decap_action, action_cnt, 0};
 
-	struct net_flow_flow tunnel_decap_rule = {
+	struct net_mat_rule tunnel_decap_rule = {
 		.table_id = 31,
 		.uid = _decap_tnl_id++,
 		.priority = 20,
-		.hw_flowid = 0,
+		.hw_ruleid = 0,
 		.matches = decap_match,
 		.actions = decap_actions};
 
 	/* Rule to forward to tunnel engine from VF/PF */
-	struct net_flow_field_ref tcam_encap_match0 =
+	struct net_mat_field_ref tcam_encap_match0 =
 			     { .instance = HEADER_INSTANCE_ETHERNET,
 			       .header = HEADER_ETHERNET,
 			       .field = HEADER_ETHERNET_DST_MAC,
-			       .mask_type = NET_FLOW_MASK_TYPE_MASK,
-			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U64,
+			       .mask_type = NET_MAT_MASK_TYPE_MASK,
+			       .type = NET_MAT_FIELD_REF_ATTR_TYPE_U64,
 			       .v.u64.value_u64 = 2,
 			       .v.u64.mask_u64 = 0x0000ffffffffffff};
-	struct net_flow_field_ref tcam_encap_match1 =
+	struct net_mat_field_ref tcam_encap_match1 =
 			     { .instance = HEADER_INSTANCE_ETHERNET,
 			       .header = HEADER_ETHERNET,
 			       .field = HEADER_ETHERNET_SRC_MAC,
-			       .mask_type = NET_FLOW_MASK_TYPE_MASK,
-			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U64,
+			       .mask_type = NET_MAT_MASK_TYPE_MASK,
+			       .type = NET_MAT_FIELD_REF_ATTR_TYPE_U64,
 			       .v.u64.value_u64 = 2,
 			       .v.u64.mask_u64 = 0x0000ffffffffffff};
-	struct net_flow_field_ref tcam_encap_match2 =
+	struct net_mat_field_ref tcam_encap_match2 =
 			     { .instance = HEADER_INSTANCE_INGRESS_PORT_METADATA,
 			       .header = HEADER_METADATA,
 			       .field = HEADER_METADATA_INGRESS_PORT,
-			       .mask_type = NET_FLOW_MASK_TYPE_MASK,
-			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U32,
+			       .mask_type = NET_MAT_MASK_TYPE_MASK,
+			       .type = NET_MAT_FIELD_REF_ATTR_TYPE_U32,
 			       .v.u32.value_u32 = 0xdeadbeef,
 			       .v.u32.mask_u32 = 0xfff};
-	struct net_flow_field_ref tcam_encap_match3 = 
+	struct net_mat_field_ref tcam_encap_match3 = 
 			     { .instance = HEADER_INSTANCE_ETHERNET,
 			       .header = HEADER_ETHERNET,
 			       .field = HEADER_ETHERNET_ETHERTYPE,
-			       .mask_type = NET_FLOW_MASK_TYPE_MASK,
-			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U64,
+			       .mask_type = NET_MAT_MASK_TYPE_MASK,
+			       .type = NET_MAT_FIELD_REF_ATTR_TYPE_U64,
 			       .v.u16.value_u16 = 0x0800,
 			       .v.u16.mask_u16 = 0xffff};
-	struct net_flow_field_ref tcam_encap_matchs[5] = {{0}, {0}, {0}, {0}, {0}};
-	struct net_flow_action_arg arg_te_table = {.name = "sub-table", .type = NET_FLOW_ACTION_ARG_TYPE_U16, .v.value_u16 = 0x1E};
-	struct net_flow_action_arg te_args[2] = {{0}, {0}};
-	struct net_flow_action tcam_action = { .name = "forward_to_tunnel_engine_A", .uid = ACTION_FORWARD_TO_TE_A, .args = te_args };
-	struct net_flow_action tcam_actions[3] = {tcam_action, action_cnt, {0}};
+	struct net_mat_field_ref tcam_encap_matchs[5] = {{0}, {0}, {0}, {0}, {0}};
+	struct net_mat_action_arg arg_te_table = {.name = "sub-table", .type = NET_MAT_ACTION_ARG_TYPE_U16, .v.value_u16 = 0x1E};
+	struct net_mat_action_arg te_args[2] = {{0}, {0}};
+	struct net_mat_action tcam_action = { .name = "forward_to_tunnel_engine_A", .uid = ACTION_FORWARD_TO_TE_A, .args = te_args };
+	struct net_mat_action tcam_actions[3] = {tcam_action, action_cnt, {0}};
 
-	struct net_flow_flow tcam_fwd_to_te_rule = {
+	struct net_mat_rule tcam_fwd_to_te_rule = {
 		  .table_id = 20,
 		  .uid = _fwd_to_encap_id++,
 		  .priority = 20,
-		  .hw_flowid = 0,
+		  .hw_ruleid = 0,
 		  .matches = tcam_encap_matchs,
 		  .actions = tcam_actions};
 
 	/* Rule to forward to tunnel engine from network */
-	struct net_flow_field_ref tcam_decap_match0 =
+	struct net_mat_field_ref tcam_decap_match0 =
 			     { .instance = HEADER_INSTANCE_ETHERNET,
 			       .header = HEADER_ETHERNET,
 			       .field = HEADER_ETHERNET_SRC_MAC,
-			       .mask_type = NET_FLOW_MASK_TYPE_EXACT,
-			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U64,
+			       .mask_type = NET_MAT_MASK_TYPE_EXACT,
+			       .type = NET_MAT_FIELD_REF_ATTR_TYPE_U64,
 			       .v.u64.value_u64 = 2,
 			       .v.u64.mask_u64 = 0xffffffffffff};
-	struct net_flow_field_ref tcam_decap_match1 =
+	struct net_mat_field_ref tcam_decap_match1 =
 			     { .instance = HEADER_INSTANCE_ETHERNET,
 			       .header = HEADER_ETHERNET,
 			       .field = HEADER_ETHERNET_DST_MAC,
-			       .mask_type = NET_FLOW_MASK_TYPE_EXACT,
-			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U64,
+			       .mask_type = NET_MAT_MASK_TYPE_EXACT,
+			       .type = NET_MAT_FIELD_REF_ATTR_TYPE_U64,
 			       .v.u64.value_u64 = 2,
 			       .v.u64.mask_u64 = 0xffffffffffff};
-	struct net_flow_field_ref tcam_decap_match2 =
+	struct net_mat_field_ref tcam_decap_match2 =
 			     { .instance = HEADER_INSTANCE_INGRESS_PORT_METADATA,
 			       .header = HEADER_METADATA,
 			       .field = HEADER_METADATA_INGRESS_PORT,
-			       .mask_type = NET_FLOW_MASK_TYPE_MASK,
-			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U32,
+			       .mask_type = NET_MAT_MASK_TYPE_MASK,
+			       .type = NET_MAT_FIELD_REF_ATTR_TYPE_U32,
 			       .v.u32.value_u32 = 5, /* hard-coded network value */
 			       .v.u32.mask_u32 = 0xfff};
-	struct net_flow_field_ref tcam_decap_match3 = 
+	struct net_mat_field_ref tcam_decap_match3 = 
 			     { .instance = HEADER_INSTANCE_ETHERNET,
 			       .header = HEADER_ETHERNET,
 			       .field = HEADER_ETHERNET_ETHERTYPE,
-			       .mask_type = NET_FLOW_MASK_TYPE_MASK,
-			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U64,
+			       .mask_type = NET_MAT_MASK_TYPE_MASK,
+			       .type = NET_MAT_FIELD_REF_ATTR_TYPE_U64,
 			       .v.u16.value_u16 = 0x0800,
 			       .v.u16.mask_u16 = 0xffff};
 
-	struct net_flow_field_ref tcam_decap_matchs[5] = {{0}, {0}, {0}, {0}, {0}};
-	struct net_flow_action_arg arg_te_decap_table = {.name = "sub-table", .type = NET_FLOW_ACTION_ARG_TYPE_U16, .v.value_u16 = 31};
-	struct net_flow_action_arg te_decap_args[] = {{0}, {0}};
-	struct net_flow_action tcam_decap_action = { .name = "forward_to_tunnel_engine_A", .uid = ACTION_FORWARD_TO_TE_A, .args = te_decap_args };
-	struct net_flow_action tcam_decap_actions[] = {tcam_decap_action, action_cnt, 0};
+	struct net_mat_field_ref tcam_decap_matchs[5] = {{0}, {0}, {0}, {0}, {0}};
+	struct net_mat_action_arg arg_te_decap_table = {.name = "sub-table", .type = NET_MAT_ACTION_ARG_TYPE_U16, .v.value_u16 = 31};
+	struct net_mat_action_arg te_decap_args[] = {{0}, {0}};
+	struct net_mat_action tcam_decap_action = { .name = "forward_to_tunnel_engine_A", .uid = ACTION_FORWARD_TO_TE_A, .args = te_decap_args };
+	struct net_mat_action tcam_decap_actions[] = {tcam_decap_action, action_cnt, 0};
 
-	struct net_flow_flow tcam_fwd_to_decap_te_rule = {
+	struct net_mat_rule tcam_fwd_to_decap_te_rule = {
 		  .table_id = 20,
 		  .uid = _fwd_to_decap_id++,
 		  .priority = 20,
-		  .hw_flowid = 0,
+		  .hw_ruleid = 0,
 		  .matches = tcam_decap_matchs,
 		  .actions = tcam_decap_actions};
 	/* Rule to forward to nexthop for traffic after encap */
-	struct net_flow_field_ref tcam_nh_match0 =
+	struct net_mat_field_ref tcam_nh_match0 =
 			     { .instance = HEADER_INSTANCE_ETHERNET,
 			       .header = HEADER_ETHERNET,
 			       .field = HEADER_ETHERNET_DST_MAC,
-			       .mask_type = NET_FLOW_MASK_TYPE_MASK,
-			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U64,
+			       .mask_type = NET_MAT_MASK_TYPE_MASK,
+			       .type = NET_MAT_FIELD_REF_ATTR_TYPE_U64,
 			       .v.u64.value_u64 = 2,
 			       .v.u64.mask_u64 = 0x0000ffffffffffff};
-	struct net_flow_field_ref tcam_nh_match1 =
+	struct net_mat_field_ref tcam_nh_match1 =
 			     { .instance = HEADER_INSTANCE_ETHERNET,
 			       .header = HEADER_ETHERNET,
 			       .field = HEADER_ETHERNET_SRC_MAC,
-			       .mask_type = NET_FLOW_MASK_TYPE_MASK,
-			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U64,
+			       .mask_type = NET_MAT_MASK_TYPE_MASK,
+			       .type = NET_MAT_FIELD_REF_ATTR_TYPE_U64,
 			       .v.u64.value_u64 = 2,
 			       .v.u64.mask_u64 = 0x0000ffffffffffff};
-	struct net_flow_field_ref tcam_nh_match2 =
+	struct net_mat_field_ref tcam_nh_match2 =
 			     { .instance = HEADER_INSTANCE_IPV4,
 			       .header = HEADER_IPV4,
 			       .field = HEADER_IPV4_DST_IP,
-			       .mask_type = NET_FLOW_MASK_TYPE_MASK,
-			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U32,
+			       .mask_type = NET_MAT_MASK_TYPE_MASK,
+			       .type = NET_MAT_FIELD_REF_ATTR_TYPE_U32,
 			       .v.u32.value_u32 = 0xdeadbeef,
 			       .v.u32.mask_u32 = 0xffffffff};
 
-	struct net_flow_field_ref tcam_nh_matchs[4] = {{0}, {0}, {0}, {0}};
-	struct net_flow_action_arg arg_nh_table = {.name = "ecmp_group_id", .type = NET_FLOW_ACTION_ARG_TYPE_U16, .v.value_u16 = 0};
-	struct net_flow_action_arg nh_args[2] = {{0}, {0}};
-	struct net_flow_action tcam_nh_action = { .name = "route_via_ecmp_str", .uid = ACTION_ROUTE_VIA_ECMP, .args = nh_args };
-	struct net_flow_action tcam_nh_actions[3] = {tcam_nh_action, action_cnt, {0}};
+	struct net_mat_field_ref tcam_nh_matchs[4] = {{0}, {0}, {0}, {0}};
+	struct net_mat_action_arg arg_nh_table = {.name = "ecmp_group_id", .type = NET_MAT_ACTION_ARG_TYPE_U16, .v.value_u16 = 0};
+	struct net_mat_action_arg nh_args[2] = {{0}, {0}};
+	struct net_mat_action tcam_nh_action = { .name = "route_via_ecmp_str", .uid = ACTION_ROUTE_VIA_ECMP, .args = nh_args };
+	struct net_mat_action tcam_nh_actions[3] = {tcam_nh_action, action_cnt, {0}};
 
-	struct net_flow_flow tcam_fwd_to_nh_rule = {
+	struct net_mat_rule tcam_fwd_to_nh_rule = {
 		  .table_id = 20,
 		  .uid = ++_fwd_to_nh_id,
 		  .priority = 20,
-		  .hw_flowid = 0,
+		  .hw_ruleid = 0,
 		  .matches = tcam_nh_matchs,
 		  .actions = tcam_nh_actions};
 
 	/* NextHop rule to set DMAC */
-	struct net_flow_field_ref nh_match0 =
+	struct net_mat_field_ref nh_match0 =
 			     { .instance = HEADER_INSTANCE_ROUTING_METADATA,
 			       .header = HEADER_METADATA,
 			       .field = HEADER_METADATA_ECMP_GROUP_ID,
-			       .mask_type = NET_FLOW_MASK_TYPE_EXACT,
-			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U32,
+			       .mask_type = NET_MAT_MASK_TYPE_EXACT,
+			       .type = NET_MAT_FIELD_REF_ATTR_TYPE_U32,
 			       .v.u32.value_u32 = 0,
 			       .v.u32.mask_u32 = 0xfffffffff};
-	struct net_flow_field_ref nh_matchs[2] = {{0}, {0}};
-	struct net_flow_action_arg arg_route_dmac = {.name = "newDMAC", .type = NET_FLOW_ACTION_ARG_TYPE_U64, .v.value_u64 = 0};
-	struct net_flow_action_arg arg_route_vlan = {.name = "newVLAN", .type = NET_FLOW_ACTION_ARG_TYPE_U16, .v.value_u16 = 0};
-	struct net_flow_action_arg nh_action_args[3] = {{0}, {0}, {0}};
+	struct net_mat_field_ref nh_matchs[2] = {{0}, {0}};
+	struct net_mat_action_arg arg_route_dmac = {.name = "newDMAC", .type = NET_MAT_ACTION_ARG_TYPE_U64, .v.value_u64 = 0};
+	struct net_mat_action_arg arg_route_vlan = {.name = "newVLAN", .type = NET_MAT_ACTION_ARG_TYPE_U16, .v.value_u16 = 0};
+	struct net_mat_action_arg nh_action_args[3] = {{0}, {0}, {0}};
 
-	struct net_flow_action nh_action = { .name = "route", .uid = ACTION_ROUTE, .args = nh_action_args };
-	struct net_flow_action nh_actions[2] = {nh_action, {0}};
+	struct net_mat_action nh_action = { .name = "route", .uid = ACTION_ROUTE, .args = nh_action_args };
+	struct net_mat_action nh_actions[2] = {nh_action, {0}};
 
-	struct net_flow_flow nh_rule = {
+	struct net_mat_rule nh_rule = {
 		  .table_id = 4,
 		  .uid = ++_fwd_to_nh_id,
 		  .priority = 20,
-		  .hw_flowid = 0,
+		  .hw_ruleid = 0,
 		  .matches = nh_matchs,
 		  .actions = nh_actions};
 
@@ -2055,7 +2055,7 @@ dp_netdev_flow_add_hw(struct dp_netdev *dp,
 			decap_match[0] = tunnel_decap_match0;
 			decap_match[1] = tunnel_decap_match1;
 
-    			flow_nl_set_flows(hw->nsd, hw->pid, 0, hw->family, &tunnel_decap_rule);
+    			match_nl_set_rules(hw->nsd, hw->pid, 0, hw->family, &tunnel_decap_rule);
 			break;
 		case OVS_ACTION_ATTR_TUNNEL_PUSH:
 			data = (struct ovs_action_push_tnl *)nl_attr_get(a);
@@ -2126,11 +2126,11 @@ dp_netdev_flow_add_hw(struct dp_netdev *dp,
 			/* Order is important here to avoid having flows hit the TCAM without a
 			 * nexthop rule in place.
 			 */ 
-    			flow_nl_set_flows(hw->nsd, hw->pid, 0, hw->family, &nh_rule);
-    			flow_nl_set_flows(hw->nsd, hw->pid, 0, hw->family, &tcam_fwd_to_nh_rule);
+    			match_nl_set_rules(hw->nsd, hw->pid, 0, hw->family, &nh_rule);
+    			match_nl_set_rules(hw->nsd, hw->pid, 0, hw->family, &tcam_fwd_to_nh_rule);
 
-    			flow_nl_set_flows(hw->nsd, hw->pid, 0, hw->family, &tcam_fwd_to_te_rule);
-    			flow_nl_set_flows(hw->nsd, hw->pid, 0, hw->family, &tunnel_encap_rule);
+    			match_nl_set_rules(hw->nsd, hw->pid, 0, hw->family, &tcam_fwd_to_te_rule);
+    			match_nl_set_rules(hw->nsd, hw->pid, 0, hw->family, &tunnel_encap_rule);
 
 			VLOG_WARN("tunnel push\n");
 			break;
@@ -2146,7 +2146,7 @@ dp_netdev_flow_add_hw(struct dp_netdev *dp,
 			tcam_decap_matchs[2] = tcam_decap_match2;
 			tcam_decap_matchs[3] = tcam_decap_match3;
 
-    			flow_nl_set_flows(hw->nsd, hw->pid, 0, hw->family, &tcam_fwd_to_decap_te_rule);
+    			match_nl_set_rules(hw->nsd, hw->pid, 0, hw->family, &tcam_fwd_to_decap_te_rule);
 
 			VLOG_WARN("tunnel pop\n");
 			break;

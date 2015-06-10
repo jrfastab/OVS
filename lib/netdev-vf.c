@@ -74,8 +74,8 @@
 #include "unaligned.h"
 #include "openvswitch/vlog.h"
 
-#include "if_flow.h"
-#include "flowlib_nl.h"
+#include "if_match.h"
+#include "matchlib_nl.h"
 #include "/home/csig_sdnd-flow_tool/models/ies_pipeline.h"
 #include "fm_sdk.h"
 #include "netdev-dpdk.h"
@@ -610,7 +610,7 @@ netdev_vf_get_config(const struct netdev *dev_, struct smap *args)
 static uint32_t
 netdev_vf_hw_pid_lookup(void)
 {
-    FILE *fd = fopen(FLOWLIB_PID_FILE, "r");	
+    FILE *fd = fopen(MATCHLIB_PID_FILE, "r");	
     uint32_t pid;
 
     if (!fd) {
@@ -677,125 +677,125 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
     uint8_t tunnel_engine_mac[ETH_ADDR_LEN] = {0,1,2,3,4,5};
 
     /* Tunnel Engine Dflt Rule */
-    struct net_flow_named_value te_set_port = {
+    struct net_mat_named_value te_set_port = {
 		.name = NULL,
-		.uid = NET_FLOW_TABLE_ATTR_NAMED_VALUE_MISS_DFLT_EGRESS_PORT,
-		.type = NET_FLOW_NAMED_VALUE_TYPE_U16,
+		.uid = NET_MAT_TABLE_ATTR_NAMED_VALUE_MISS_DFLT_EGRESS_PORT,
+		.type = NET_MAT_NAMED_VALUE_TYPE_U16,
 		.value.u16 = 0,
     };
-    struct net_flow_named_value te_set_dmac = {
+    struct net_mat_named_value te_set_dmac = {
 		.name = NULL,
-		.uid = NET_FLOW_TABLE_ATTR_NAMED_VALUE_VXLAN_DST_MAC,
-		.type = NET_FLOW_NAMED_VALUE_TYPE_U64,
+		.uid = NET_MAT_TABLE_ATTR_NAMED_VALUE_VXLAN_DST_MAC,
+		.type = NET_MAT_NAMED_VALUE_TYPE_U64,
 		.value.u64 = 0,
     };
-    struct net_flow_named_value te_set_smac = {
+    struct net_mat_named_value te_set_smac = {
 		.name = NULL,
-		.uid = NET_FLOW_TABLE_ATTR_NAMED_VALUE_VXLAN_SRC_MAC,
-		.type = NET_FLOW_NAMED_VALUE_TYPE_U64,
+		.uid = NET_MAT_TABLE_ATTR_NAMED_VALUE_VXLAN_SRC_MAC,
+		.type = NET_MAT_NAMED_VALUE_TYPE_U64,
 		.value.u64 = 0,
     };
-    struct net_flow_named_value te_zero = {.name = NULL, .uid = 0, .type = 0, .value.u64 = 0};
-    struct net_flow_named_value te_attribs[4];
-    struct net_flow_tbl te_A_update = {.name = NULL, };
-    struct net_flow_tbl te_B_update = {.name = NULL, };
+    struct net_mat_named_value te_zero = {.name = NULL, .uid = 0, .type = 0, .value.u64 = 0};
+    struct net_mat_named_value te_attribs[4];
+    struct net_mat_tbl te_A_update = {.name = NULL, };
+    struct net_mat_tbl te_B_update = {.name = NULL, };
 
     /* TCAM Table */
-    struct net_flow_tbl tcam_table;
-    struct net_flow_field_ref tcam_matches[] = {
+    struct net_mat_tbl tcam_table;
+    struct net_mat_field_ref tcam_matches[] = {
 		{ .instance = HEADER_INSTANCE_INGRESS_PORT_METADATA,
                   .header = HEADER_METADATA,
                   .field = HEADER_METADATA_INGRESS_PORT,
-                  .mask_type = NET_FLOW_MASK_TYPE_MASK,},
+                  .mask_type = NET_MAT_MASK_TYPE_MASK,},
 		{ .instance = HEADER_INSTANCE_ETHERNET,
                   .header = HEADER_ETHERNET,
                   .field = HEADER_ETHERNET_DST_MAC,
-                  .mask_type = NET_FLOW_MASK_TYPE_MASK,},
+                  .mask_type = NET_MAT_MASK_TYPE_MASK,},
 		{ .instance = HEADER_INSTANCE_ETHERNET,
 		  .header = HEADER_ETHERNET,
 		  .field = HEADER_ETHERNET_SRC_MAC,
-		  .mask_type = NET_FLOW_MASK_TYPE_MASK,},
+		  .mask_type = NET_MAT_MASK_TYPE_MASK,},
 		{ .instance = HEADER_INSTANCE_ETHERNET,
 		  .header = HEADER_ETHERNET,
 		  .field = HEADER_ETHERNET_ETHERTYPE,
-		  .mask_type = NET_FLOW_MASK_TYPE_MASK,},
+		  .mask_type = NET_MAT_MASK_TYPE_MASK,},
 		{ .instance = HEADER_INSTANCE_IPV4,
 		  .header = HEADER_IPV4,
 		  .field = HEADER_IPV4_DST_IP,
-		  .mask_type = NET_FLOW_MASK_TYPE_LPM,},
+		  .mask_type = NET_MAT_MASK_TYPE_LPM,},
                 {0}};
     __u32 tcam_actions[] = {ACTION_SET_EGRESS_PORT, ACTION_FORWARD_TO_TE_A, ACTION_ROUTE_VIA_ECMP, ACTION_COUNT, 0};
 
     /* Tunnel Encap Table */
-    struct net_flow_tbl encap_table;
-    struct net_flow_field_ref tunnel_matches[] = {
+    struct net_mat_tbl encap_table;
+    struct net_mat_field_ref tunnel_matches[] = {
 		{ .instance = HEADER_INSTANCE_ETHERNET,
                   .header = HEADER_ETHERNET,
                   .field = HEADER_ETHERNET_DST_MAC,
-                  .mask_type = NET_FLOW_MASK_TYPE_EXACT,},
+                  .mask_type = NET_MAT_MASK_TYPE_EXACT,},
 		{ .instance = HEADER_INSTANCE_ETHERNET,
                   .header = HEADER_ETHERNET,
                   .field = HEADER_ETHERNET_SRC_MAC,
-                  .mask_type = NET_FLOW_MASK_TYPE_EXACT,},
+                  .mask_type = NET_MAT_MASK_TYPE_EXACT,},
                 {0}};
-    struct net_flow_field_ref tunnel_decap_matches[] = {
+    struct net_mat_field_ref tunnel_decap_matches[] = {
 		{ .instance = HEADER_INSTANCE_ETHERNET,
                   .header = HEADER_ETHERNET,
                   .field = HEADER_ETHERNET_DST_MAC,
-                  .mask_type = NET_FLOW_MASK_TYPE_EXACT,},
+                  .mask_type = NET_MAT_MASK_TYPE_EXACT,},
 		{ .instance = HEADER_INSTANCE_ETHERNET,
                   .header = HEADER_ETHERNET,
                   .field = HEADER_ETHERNET_SRC_MAC,
-                  .mask_type = NET_FLOW_MASK_TYPE_EXACT,},
+                  .mask_type = NET_MAT_MASK_TYPE_EXACT,},
                 {0}};
     __u32 encap_actions[] = {ACTION_TUNNEL_ENCAP, ACTION_COUNT, 0};
 
     /* Tunnel Decap Table */
-    struct net_flow_tbl decap_table;
+    struct net_mat_tbl decap_table;
     __u32 decap_actions[] = {ACTION_TUNNEL_DECAP, ACTION_COUNT, 0};
 
     /* Generic count action */
-    struct net_flow_action action_cnt = { .name = "count", .uid = ACTION_COUNT, .args = NULL};
+    struct net_mat_action action_cnt = { .name = "count", .uid = ACTION_COUNT, .args = NULL};
 
     /* Default Rule for VF */
-    struct net_flow_field_ref m0 = { .instance = HEADER_INSTANCE_INGRESS_PORT_METADATA,
+    struct net_mat_field_ref m0 = { .instance = HEADER_INSTANCE_INGRESS_PORT_METADATA,
 			       .header = HEADER_METADATA,
 			       .field = HEADER_METADATA_INGRESS_PORT,
-			       .mask_type = NET_FLOW_MASK_TYPE_MASK,
-			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U32,
+			       .mask_type = NET_MAT_MASK_TYPE_MASK,
+			       .type = NET_MAT_FIELD_REF_ATTR_TYPE_U32,
 			       .v.u32.value_u32 = 1,
 			       .v.u32.mask_u32 = 0xfff};
-    struct net_flow_field_ref m[] = {m0, 0};
-    struct net_flow_action a0 = { .name = "set_egress_port", .uid = ACTION_SET_EGRESS_PORT, .args = NULL };
-    struct net_flow_action a[] = {a0, action_cnt, 0};
-    struct net_flow_flow vf_dflt_rule = {
+    struct net_mat_field_ref m[] = {m0, 0};
+    struct net_mat_action a0 = { .name = "set_egress_port", .uid = ACTION_SET_EGRESS_PORT, .args = NULL };
+    struct net_mat_action a[] = {a0, action_cnt, 0};
+    struct net_mat_rule vf_dflt_rule = {
 		  .table_id = 20,
 		  .uid = 20,
 		  .priority = 10,
-		  .hw_flowid = 0,
+		  .hw_ruleid = 0,
 		  .matches = m,
 		  .actions = a};
-    struct net_flow_action_arg arg = {.name = "egress_port", .type = NET_FLOW_ACTION_ARG_TYPE_U32, .v.value_u32 = 22};
-    struct net_flow_action_arg as[] = {arg, 0};
+    struct net_mat_action_arg arg = {.name = "egress_port", .type = NET_MAT_ACTION_ARG_TYPE_U32, .v.value_u32 = 22};
+    struct net_mat_action_arg as[] = {arg, 0};
 
     /* Default Rule for PF */
-    struct net_flow_field_ref m_pf0 = { .instance = HEADER_INSTANCE_INGRESS_PORT_METADATA,
+    struct net_mat_field_ref m_pf0 = { .instance = HEADER_INSTANCE_INGRESS_PORT_METADATA,
 			       .header = HEADER_METADATA,
 			       .field = HEADER_METADATA_INGRESS_PORT,
-			       .mask_type = NET_FLOW_MASK_TYPE_MASK,
-			       .type = NET_FLOW_FIELD_REF_ATTR_TYPE_U32,
+			       .mask_type = NET_MAT_MASK_TYPE_MASK,
+			       .type = NET_MAT_FIELD_REF_ATTR_TYPE_U32,
 			       .v.u32.value_u32 = 5,
 			       .v.u32.mask_u32 = 0xffffffff};
-    struct net_flow_field_ref m_pf[] = {m_pf0, 0};
-    struct net_flow_action_arg arg_pf = {.name = "egress_port", .type = NET_FLOW_ACTION_ARG_TYPE_U32, .v.value_u32 = 22};
-    struct net_flow_action_arg args_pf[] = {arg_pf, 0};
-    struct net_flow_action a_pf0 = { .name = "set_egress_port", .uid = ACTION_SET_EGRESS_PORT, .args = args_pf };
-    struct net_flow_action a_pf[] = {a_pf0, action_cnt, 0};
-    struct net_flow_flow pf_dflt_rule = {
+    struct net_mat_field_ref m_pf[] = {m_pf0, 0};
+    struct net_mat_action_arg arg_pf = {.name = "egress_port", .type = NET_MAT_ACTION_ARG_TYPE_U32, .v.value_u32 = 22};
+    struct net_mat_action_arg args_pf[] = {arg_pf, 0};
+    struct net_mat_action a_pf0 = { .name = "set_egress_port", .uid = ACTION_SET_EGRESS_PORT, .args = args_pf };
+    struct net_mat_action a_pf[] = {a_pf0, action_cnt, 0};
+    struct net_mat_rule pf_dflt_rule = {
 		  .table_id = 20,
 		  .uid = 21,
 		  .priority = 10,
-		  .hw_flowid = 0,
+		  .hw_ruleid = 0,
 		  .matches = m_pf,
 		  .actions = a_pf};
 
@@ -826,7 +826,7 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
     dev->tnl.out_key = 0;
 
     /* setup hardware configuration channel */
-    dev->hw.nsd = flow_nl_get_socket();
+    dev->hw.nsd = match_nl_get_socket();
     dev->hw.pid = netdev_vf_hw_pid_lookup();
     dev->hw.family = FLOW_FI_FAMILY;
     dev->hw.sw = FM_MAIN_SWITCH;
@@ -862,11 +862,11 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
         }
     }
 
-    /* flow_nl_pci_lport is currently buggy so require input from cmd line */
+    /* match_nl_pci_lport is currently buggy so require input from cmd line */
     if (lport)
         dev->hw.vf_lport = lport;
     else
-        err = flow_nl_pci_lport(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family,
+        err = match_nl_pci_lport(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family,
 			        bus, device, function, &dev->hw.vf_lport);
 
     if (err) {
@@ -886,7 +886,7 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
     tcam_table.matches = tcam_matches;
     tcam_table.actions = tcam_actions;
     tcam_table.attribs = NULL;
-    err = flow_nl_create_table(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family, &tcam_table);
+    err = match_nl_create_table(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family, &tcam_table);
     if (err)
         VLOG_WARN("%s: error create tcam table failed %i\n", name, err);
 
@@ -898,7 +898,7 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
     encap_table.matches = tunnel_matches;
     encap_table.actions = encap_actions;
     encap_table.attribs = NULL;
-    err = flow_nl_create_table(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family, &encap_table);
+    err = match_nl_create_table(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family, &encap_table);
     if (err)
         VLOG_WARN("%s: error create encap table failed %i\n", name, err);
 
@@ -910,7 +910,7 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
     decap_table.matches = tunnel_decap_matches;
     decap_table.actions = decap_actions;
     decap_table.attribs = NULL;
-    err = flow_nl_create_table(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family, &decap_table);
+    err = match_nl_create_table(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family, &decap_table);
     if (err)
         VLOG_WARN("%s: error create decap table failed %i\n", name, err);
 
@@ -919,12 +919,12 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
     arg.v.value_u32 = dev->hw.pf_lport; /* pep0 id */
     m[0].v.u32.value_u32 = dev->hw.vf_lport;
     m[0].v.u32.mask_u32 = 0xffffffff;
-    err = flow_nl_set_flows(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family, &vf_dflt_rule);
+    err = match_nl_set_rules(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family, &vf_dflt_rule);
     if (err)
         VLOG_WARN("%s: error set default vf flow failed %i\n", name, err);
 
     /* Add rule to map network to PF by default */
-    err = flow_nl_set_flows(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family, &pf_dflt_rule);
+    err = match_nl_set_rules(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family, &pf_dflt_rule);
     if (err)
         VLOG_WARN("%s: error set default pf flow failed %i\n", name, err);
 
@@ -943,8 +943,8 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
     te_A_update.attribs = te_attribs;
     te_B_update.attribs = te_attribs;
 
-    flow_nl_update_table(dev->hw.nsd, dev->hw.pid, 0 , dev->hw.family, &te_A_update);
-    flow_nl_update_table(dev->hw.nsd, dev->hw.pid, 0 , dev->hw.family, &te_B_update);
+    match_nl_update_table(dev->hw.nsd, dev->hw.pid, 0 , dev->hw.family, &te_A_update);
+    match_nl_update_table(dev->hw.nsd, dev->hw.pid, 0 , dev->hw.family, &te_B_update);
 
     return 0;
 }
