@@ -7,3 +7,4 @@ extern int vf_odp_port;
 
 void netdev_vf_register(void);
 uint32_t netdev_vf_lport(struct netdev *netdev_);
+uint32_t netdev_vf_odp_port(int src_glort);

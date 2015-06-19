@@ -892,16 +892,15 @@ netdev_dpdk_vhost_rxq_recv(struct netdev_rxq *rxq_,
 /* Should only reach this case if VF enabled hopefully this is
  * acceptable performance trade-off */
 static bool
-is_glort_network(struct rte_mbuf *mb, struct netdev_dpdk *dev)
+is_glort_network(struct rte_mbuf *mb, struct netdev_dpdk *dev, uint16_t *src_glort)
 {
 	uint16_t *user_data;
-	uint16_t src_glort;
 
  	user_data = &mb->udata64;
- 	src_glort = user_data[1];
+ 	*src_glort = user_data[1];
 
-	printf("%s: src_glort %04x %u\n", __func__, src_glort, src_glort);
-	return src_glort == dev->network_glort;
+	printf("%s: src_glort %04x %u\n", __func__, *src_glort, src_glort);
+	return *src_glort == dev->network_glort;
 }
 
 static int
@@ -929,10 +928,10 @@ netdev_dpdk_rxq_recv(struct netdev_rxq *rxq_, struct dp_packet **packets,
 
     for (i = 0; i < nb_rx; i++) { 
         struct rte_mbuf *p = (struct rte_mbuf *)packets[i];
+	uint16_t src_glort;
 
-	if (dev->network_glort && (is_glort_network(p, dev) == false)) {
-printf("%s: vf pkt assign %i\n", __func__, vf_odp_port);
-		*port = vf_odp_port;
+	if (dev->network_glort && (is_glort_network(p, dev, &src_glort) == false)) {
+		*port = netdev_vf_odp_port(src_glort);
 	}
     }
 

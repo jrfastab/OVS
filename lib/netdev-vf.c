@@ -76,7 +76,7 @@
 
 #include "if_match.h"
 #include "matchlib_nl.h"
-#include "models/ies_pipeline.h"
+#include "ies_pipeline.h"
 #include "fm_sdk.h"
 #include "netdev-dpdk.h"
 
@@ -85,7 +85,6 @@ VLOG_DEFINE_THIS_MODULE(netdev_vf);
 /* clumsy hack for the moment because we leak into netdev-dpdk
  * to handle receive side and set the lport value
  */
-int vf_odp_port;
 #define FLOW_FI_FAMILY 555
 #define FM_MAIN_SWITCH 0 /* is this a safe pattern? */
 
@@ -949,13 +948,14 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
     return 0;
 }
 
+ofp_port_t netdev_vf_odp_port[256];
+
 int netdev_vf_set_port_no(const struct netdev *netdev_, ofp_port_t port_no)
 {
-    /* And because we do not have a VF port identifier on DPDK receive and we want to
-     * avoid creating our own threads...
-     */
-    vf_odp_port = port_no;
-    VLOG_WARN("%s: odp port no %i\n", netdev_->name, vf_odp_port);
+    struct netdev_vf *netdev = netdev_vf_cast(netdev_);
+    struct netdev *root = netdev->root;
+
+    netdev_vf_odp_port[netdev->hw.vf_lport & 0x00ff] = port_no;
 }
 
 int netdev_vf_port(const struct netdev *netdev_)

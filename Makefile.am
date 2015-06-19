@@ -9,13 +9,12 @@ AUTOMAKE_OPTIONS = foreign subdir-objects
 ACLOCAL_AMFLAGS = -I m4
 SUBDIRS = datapath
 
-IES_LDFLAGS=-L$(SDK)/build -lFocalpointSDK -lpthread -ldl -lLTStdPlatform
-FLOWLIB_LDFLAGS=`pkg-config libnl-3.0 libnl-route-3.0 libnl-cli-3.0 libgvc --libs`
-FLOWLIB_LDFLAGS+=-L$(FLOWLIB)/lib/.libs -lmatch -lmatchd -lmatchies
+FLOWLIB_LDFLAGS=`pkg-config libnl-3.0 libnl-route-3.0 libnl-cli-3.0 libgvc match-interface ies-api --libs`
+#FLOWLIB_LDFLAGS+=-L$(FLOWLIB)/lib/.libs -lmatch -lmatchd -lmatchies
 
 AM_CPPFLAGS = $(SSL_CFLAGS)
 AM_LDFLAGS = $(SSL_LDFLAGS)
-AM_LDFLAGS += $(OVS_LDFLAGS) $(IES_LDFLAGS) $(FLOWLIB_LDFLAGS)
+AM_LDFLAGS += $(OVS_LDFLAGS) $(FLOWLIB_LDFLAGS)
 
 if WIN32
 AM_CPPFLAGS += -I $(top_srcdir)/include/windows
@@ -35,7 +34,8 @@ AM_CPPFLAGS += $(SSL_INCLUDES)
 AM_CFLAGS = -Wstrict-prototypes -mssse3
 AM_CFLAGS += $(WARNING_FLAGS)
 AM_CFLAGS += $(OVS_CFLAGS)
-AM_CFLAGS += -I $(FLOWLIB)/include -I$(SDK)/include -I $(FLOWLIB)/models
+AM_CFLAGS += `pkg-config libnl-3.0 libnl-route-3.0 libnl-cli-3.0 libgvc match-interface ies-api --cflags` -I $(FLOWLIB)/models
+#-I $(FLOWLIB)/include -I$(SDK)/include -I $(FLOWLIB)/models
 
 if DPDK_NETDEV
 AM_CFLAGS += -D_FILE_OFFSET_BITS=64
