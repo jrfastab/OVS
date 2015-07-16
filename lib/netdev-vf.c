@@ -670,6 +670,7 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
     struct smap_node *node;
     __u32 pep0 = 0;
     uint16_t lport = 0;
+    uint32_t dpdk_lport = 0;
     int err = 0;
     uint8_t bus = 0, device = 0, function = 0;
     uint8_t src_te_mac[ETH_ADDR_LEN];
@@ -842,8 +843,6 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
         }
 
         if (!strcmp(node->key, "pci")) {
-	    int pf;
-
 	    ret = sscanf(node->value, "%" SCNu8 ":%" SCNu8 ".%" SCNu8 "", &bus, &device, &function);
 	    if (ret != 3) {
 		VLOG_WARN("%s: invalid pci key %s\n", __func__, node->value);
@@ -871,6 +870,16 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
     if (err) {
         VLOG_WARN("(%x:%x.%x) does not have supported switch port\n");
 	return err;
+    }
+
+
+    /* get the lport ID for the root netdev. */
+    err = match_nl_pci_lport(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family,
+                             bus, device, function, &dpdk_lport);
+
+    if (err) {
+        VLOG_WARN("(%x:%x.%x) does not have supported switch port\n");
+        return err;
     }
 
     VLOG_WARN("%s: tic.remote_ip="IP_FMT" pep-lport=%i vf-lport=%i pid=%i\n",
@@ -915,6 +924,8 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
 
     /* Add mapping from VF to VNI */
     vf_dflt_rule.actions[0].args = as;
+    vf_dflt_rule.actions[0].args[0].v.value_u32 = dpdk_lport;
+    vf_dflt_rule.uid = dev->hw.vf_lport & 0xff;
     arg.v.value_u32 = dev->hw.pf_lport; /* pep0 id */
     m[0].v.u32.value_u32 = dev->hw.vf_lport;
     m[0].v.u32.mask_u32 = 0xffffffff;
@@ -923,6 +934,8 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
         VLOG_WARN("%s: error set default vf flow failed %i\n", name, err);
 
     /* Add rule to map network to PF by default */
+    pf_dflt_rule.uid = tcam_table.size - 1;
+    pf_dflt_rule.actions[0].args[0].v.value_u32 = dpdk_lport;
     err = match_nl_set_rules(dev->hw.nsd, dev->hw.pid, 0, dev->hw.family, &pf_dflt_rule);
     if (err)
         VLOG_WARN("%s: error set default pf flow failed %i\n", name, err);
@@ -932,7 +945,7 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
     dp_netdev_flow_mac_to_value(&te_set_dmac.value.u64, tunnel_engine_mac);
     dp_netdev_flow_mac_to_value(&te_set_smac.value.u64, src_te_mac);
 
-    te_set_port.value.u16 = 22;
+    te_set_port.value.u16 = dpdk_lport;
     te_attribs[0] = te_set_port;
     te_attribs[1] = te_set_dmac;
     te_attribs[2] = te_set_smac;
