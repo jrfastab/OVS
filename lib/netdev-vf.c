@@ -721,7 +721,7 @@ netdev_vf_set_config(struct netdev *dev_, const struct smap *args)
 		{ .instance = HEADER_INSTANCE_IPV4,
 		  .header = HEADER_IPV4,
 		  .field = HEADER_IPV4_DST_IP,
-		  .mask_type = NET_MAT_MASK_TYPE_LPM,},
+		  .mask_type = NET_MAT_MASK_TYPE_MASK,},
                 {0}};
     __u32 tcam_actions[] = {ACTION_SET_EGRESS_PORT, ACTION_FORWARD_TO_TE_A, ACTION_ROUTE_VIA_ECMP, ACTION_COUNT, 0};
 
